@@ -1,12 +1,17 @@
-import { getProject } from './projects';
+import { getProject } from './projects.js';
 
 export function loadProjectsFromDatabase() {
-	let projects = [];
+	const projects = [];
 
 	for (let i = 0; i < localStorage.length; i++) {
-		const name = localStorage.key(i);
-		projects.push(getProject(name));
+		const projectName = localStorage.key(i);
+		projects.push({ projectName, lastUpdated: getProject(projectName).lastUpdated, projectTodos: getProject(projectName).listOfTodos });
 	}
 
-	return projects;
+	const projectsSortedEarlyToLate = projects.sort((projectA, projectB) => {
+		if (projectA.lastUpdated > projectB.lastUpdated) return 1;
+		else return -1;
+	});
+
+	return projectsSortedEarlyToLate;
 }

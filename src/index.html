@@ -5,5 +5,65 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<title>Todo List</title>
 	</head>
-	<body></body>
+	<body>
+		<header>
+			<h1>Todo List</h1>
+		</header>
+
+		<main>
+			<div>
+				<p style="font-size: 1.2rem">Add New Project</p>
+				<img src="./plus.png" alt="Add New Project" width="100" height="auto" />
+			</div>
+		</main>
+
+		<div class="new-project-input-dialog" tabindex="0">
+			<img src="./close.jpg" alt="Close" width="10" height="auto" />
+			<label for="project-name">Enter project name:</label>
+			<input type="text" id="project-name" />
+			<button>Add</button>
+		</div>
+
+		<form class="todo-popup-form" tabindex="0">
+			<img src="./close.jpg" alt="Close" width="10" height="auto" />
+			<h2>Project:</h2>
+			<div class="todo-name">
+				<label for="todo-name">Todo: </label>
+				<input type="text" id="todo-name" name="todo-name" spellcheck="false" />
+			</div>
+			<div class="description">
+				<label for="description">Description: </label>
+				<textarea name="description" id="description" cols="30" rows="5" spellcheck="false"></textarea>
+			</div>
+			<div class="due-date">
+				<label for="due-date">Due Date: </label>
+				<input type="date" id="due-date" name="due-date" />
+			</div>
+			<div class="status">
+				<fieldset>
+					<p>Status:</p>
+					<label for="not-started">Not Started</label>
+					<input type="radio" name="status" value="Not Started" id="not-started" checked />
+					<label for="in-progress">In-Progress</label>
+					<input type="radio" name="status" value="In-Progress" id="in-progress" />
+					<label for="complete">Complete</label>
+					<input type="radio" name="status" value="Complete" id="complete" />
+				</fieldset>
+			</div>
+			<div class="priority">
+				<label for="priority">Priority: </label>
+				<select name="priority" id="priority">
+					<option value="High">High</option>
+					<option value="Medium" selected>Medium</option>
+					<option value="Low">Low</option>
+				</select>
+			</div>
+			<div class="notes">
+				<label for="notes">Notes: </label>
+				<textarea name="notes" id="notes" cols="30" rows="5" spellcheck="false"></textarea>
+			</div>
+			<button type="button">Checklist</button>
+			<button type="button">Save</button>
+		</form>
+	</body>
 </html>
