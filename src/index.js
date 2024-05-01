@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import PubSub from 'pubsub-js';
 import { loadProjectsFromDatabase } from './on-load.js';
 import { setupCustomPubSubListeners } from './background-logic.js';
+import { readTodo } from './todo.js';
 
 let projects = loadProjectsFromDatabase();
 
@@ -120,7 +121,12 @@ function showTodoForm(projectName, isItNewOrEditTodo) {
 
 	todoPopupForm.setAttribute('style', 'visibility: visible;');
 
-	todoNameField.focus();
+	// if new todo, focus on the todoName field, but if editing, then make it readonly
+	if (isItNewOrEditTodo === 'New') todoNameField.focus();
+	else if (isItNewOrEditTodo === 'Edit') {
+		todoNameField.setAttribute('readonly', true);
+		todoNameField.setAttribute('style', 'background-color: lightgray;');
+	}
 
 	saveBtn.addEventListener('click', saveTodoCloseForm);
 
@@ -160,6 +166,7 @@ function showTodoForm(projectName, isItNewOrEditTodo) {
 		const del = document.createElement('button');
 
 		todo.setAttribute('style', 'display: grid; grid-template-columns: 2fr .9fr .8fr; grid-template-rows: 1fr 1fr; height: 25%; gap: .3em;');
+		todo.dataset.name = todoNameField.value;
 
 		todoName.setAttribute('style', 'width: 85%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;');
 
@@ -192,10 +199,16 @@ function showTodoForm(projectName, isItNewOrEditTodo) {
 
 		todo.append(todoName, priority, edit, dueDate, status, del);
 
+		// if new todo: add it to the list, if editing: replace the existing/old todo with the edited one
 		if (isItNewOrEditTodo === 'New') {
+			alertUserIfTodoAlreadyExists();
 			todoList.appendChild(todo);
 		} else if (isItNewOrEditTodo === 'Edit') {
-			todoList.replaceChild(todo, todoList.firstChild);
+			let oldTodo;
+			for (let todo of todoList.childNodes) {
+				if (todo.dataset.name === todoNameField.value) oldTodo = todo;
+			}
+			todoList.replaceChild(todo, oldTodo);
 		}
 
 		function colorPriorityAndStatus() {
@@ -245,8 +258,17 @@ function showTodoForm(projectName, isItNewOrEditTodo) {
 			});
 		}
 
+		function alertUserIfTodoAlreadyExists() {
+			// if todo already exists, alert user and return false
+			if (readTodo(projectName, todoNameField.value).todoName === todoNameField.value) {
+				alert('Todo already exists');
+				return false;
+			}
+		}
+
 		// save to database
 		// if (isItNewOrEditTodo === 'New') {
+		// 	alertUserIfTodoAlreadyExists();
 		// 	PubSub.publish('createTodo', {
 		// 		projectName,
 		// 		todoName: todoNameField.value,

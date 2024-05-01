@@ -10,7 +10,6 @@ export function createTodo(projectName, todoName, description = '', dueDate = ''
 	let projectToUpdate = getProject(projectName);
 
 	let todo = {
-		todoIndex: projectToUpdate.length,
 		todoName,
 		description,
 		due,
@@ -26,17 +25,26 @@ export function createTodo(projectName, todoName, description = '', dueDate = ''
 	return todo;
 }
 
-export function readTodo(projectName, todoIndex) {
-	return getProject(projectName).listOfTodos[todoIndex];
+export function readTodo(projectName, todoName) {
+	let todoToFind;
+
+	for (let todo of getProject(projectName).listOfTodos) {
+		if (todo.todoName === todoName) {
+			todoToFind = todo;
+			return todoToFind;
+		}
+	}
+
+	// return false if todo isn't found
+	return false;
 }
 
-export function updateTodo(projectName, todoIndex, todoName, description = '', dueDate = '', todoStatus, priority = '', notes = '', checklist) {
+export function updateTodo(projectName, todoName, description = '', dueDate = '', todoStatus, priority = '', notes = '', checklist) {
 	let due;
 	if (dueDate === '') due = '';
 	else due = format(dueDate, 'MM/dd/yyyy');
 
 	let todo = {
-		todoIndex,
 		todoName,
 		description,
 		due,
@@ -47,14 +55,22 @@ export function updateTodo(projectName, todoIndex, todoName, description = '', d
 	};
 
 	let projectToUpdate = getProject(projectName);
-	projectToUpdate.listOfTodos[todoIndex] = todo;
+
+	let todoToUpdate = readTodo(projectName, todoName);
+	todoToUpdate = todo;
+
 	updateProject(projectName, projectToUpdate);
 
 	return todo;
 }
 
-export function deleteTodo(projectName, todoIndex) {
+export function deleteTodo(projectName, todoName) {
 	let projectToUpdate = getProject(projectName);
-	projectToUpdate.listOfTodos.splice(todoIndex, 1);
+
+	let indexOfTodoToDelete = projectToUpdate.listOfTodos.findIndex(todo => {
+		if (todo.todoName === todoName) return true;
+	});
+
+	projectToUpdate.listOfTodos.splice(indexOfTodoToDelete, 1);
 	updateProject(projectName, projectToUpdate);
 }

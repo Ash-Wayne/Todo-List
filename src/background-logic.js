@@ -1,7 +1,6 @@
 import { createNewProject } from './projects.js';
 import { deleteProject } from './projects.js';
 import { createTodo } from './todo.js';
-import { readTodo } from './todo.js';
 import { updateTodo } from './todo.js';
 import { deleteTodo } from './todo.js';
 import { addToChecklist } from './checklist.js';
