@@ -16,6 +16,8 @@ import PubSub from 'pubsub-js';
 export function setupCustomPubSubListeners() {
 	PubSub.subscribe('addNewProject', createNewProjectWrapper);
 	PubSub.subscribe('createTodo', createTodoWrapper);
+	PubSub.subscribe('updateTodo', updateTodoWrapper);
+	PubSub.subscribe('deleteTodo', deleteTodoWrapper);
 }
 
 function createNewProjectWrapper(_, projectName) {
@@ -26,48 +28,10 @@ function createTodoWrapper(_, todo) {
 	createTodo(todo.projectName, todo.todoName, todo.description, todo.dueDate, todo.status, todo.priority, todo.notes, todo.checklist);
 }
 
-// createDefaultProject();
-// createNewProject('daily');
+function updateTodoWrapper(_, todo) {
+	updateTodo(todo.projectName, todo.todoName, todo.description, todo.dueDate, todo.status, todo.priority, todo.notes, todo.checklist);
+}
 
-// addToChecklist('wake up');
-// addToChecklist('pee');
-// addToChecklist('brush');
-
-// createTodo('daily', 'task', 'this is the task', new Date('2014, 1, 11'), 'high', 'no notes', returnFinalChecklist());
-
-// console.log(readTodo('daily', 0));
-
-// updateTodo('daily', 0, 'task', 'first task', new Date('2014, 1, 11'), true, 'high', 'no notes');
-
-// deleteTodo('daily', 0);
-
-// console.log(loadProjectsFromDatabase());
-
-// console.log(getProject('Default'));
-// deleteProject('daily');
-
-// reloadChecklistIntoMemory(readTodo(1).checklist);
-
-// console.log(readChecklistFromMemory());
-
-// editChecklistItem(1, 'pee', 'pee and poop');
-// changeItemStatus(0, true);
-
-// updateTodo(1, 'task', 'first task', new Date('2014, 1, 11'), 'high', 'no notes', returnFinalChecklist());
-
-// console.log(readChecklistFromMemory());
-
-// deleteTodo(1);
-
-// removeChecklistItem(1);
-
-// console.log(returnFinalChecklist());
-
-// reloadChecklistIntoMemory(['start', 'keep going', 'finish']);
-// console.log(readChecklistFromMemory());
-
-// console.log(readTodo(1));
-
-// deleteTodo(1);
-
-// , ['start', 'keep going', 'finish']
+function deleteTodoWrapper(_, todo) {
+	deleteTodo(todo.projectName, todo.todoName);
+}

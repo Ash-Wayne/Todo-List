@@ -9,6 +9,9 @@ import { readTodo } from './todo.js';
 let projects = loadProjectsFromDatabase();
 
 setupCustomPubSubListeners();
+PubSub.subscribe('createTodo', moveLatestUpdatedProjectToTop);
+PubSub.subscribe('updateTodo', moveLatestUpdatedProjectToTop);
+
 initializeApp();
 setupAddNewProjectListener();
 
@@ -74,7 +77,7 @@ function addNewProject(projectName) {
 	name.setAttribute('style', 'font-weight: bold; text-align: center; font-size: 1.3rem;');
 
 	const todoList = document.createElement('div');
-	todoList.setAttribute('style', 'padding: 1em; height: 75%; display: flex; flex-direction: column;');
+	todoList.setAttribute('style', 'padding: 0 1em 1em 1em; height: 60%; display: flex; flex-direction: column; gap: .8em; overflow-y: auto;');
 
 	const newTodoBtn = document.createElement('button');
 	newTodoBtn.textContent = 'Add New Todo';
@@ -121,14 +124,17 @@ function showTodoForm(projectName, isItNewOrEditTodo) {
 
 	todoPopupForm.setAttribute('style', 'visibility: visible;');
 
-	// if new todo, focus on the todoName field, but if editing, then make it readonly
-	if (isItNewOrEditTodo === 'New') todoNameField.focus();
-	else if (isItNewOrEditTodo === 'Edit') {
+	// if new todo, focus on the todoName field and make it read-write, but if editing, then make it readonly
+	if (isItNewOrEditTodo === 'New') {
+		todoNameField.removeAttribute('readonly');
+		todoNameField.setAttribute('style', 'background-color: white;');
+		todoNameField.focus();
+	} else if (isItNewOrEditTodo === 'Edit') {
 		todoNameField.setAttribute('readonly', true);
 		todoNameField.setAttribute('style', 'background-color: lightgray;');
 	}
 
-	saveBtn.addEventListener('click', saveTodoCloseForm);
+	saveBtn.addEventListener('click', saveTodo_CloseForm);
 
 	closeBtn.addEventListener('click', closeFormPopup);
 
@@ -136,7 +142,7 @@ function showTodoForm(projectName, isItNewOrEditTodo) {
 		if (e.key === 'Escape') closeFormPopup();
 	});
 
-	function saveTodoCloseForm() {
+	function saveTodo_CloseForm() {
 		// if a field is not entered properly, saveToDo will return false and keep the popup from closing
 		if (saveTodo() === false) return;
 		closeFormPopup();
@@ -165,7 +171,10 @@ function showTodoForm(projectName, isItNewOrEditTodo) {
 		const edit = document.createElement('button');
 		const del = document.createElement('button');
 
-		todo.setAttribute('style', 'display: grid; grid-template-columns: 2fr .9fr .8fr; grid-template-rows: 1fr 1fr; height: 25%; gap: .3em;');
+		todo.setAttribute(
+			'style',
+			'display: grid; grid-template-columns: 1.7fr .9fr .8fr; grid-template-rows: 1fr 1fr; height: 25%; gap: .3em; flex-shrink: 0;'
+		);
 		todo.dataset.name = todoNameField.value;
 
 		todoName.setAttribute('style', 'width: 85%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;');
@@ -178,7 +187,6 @@ function showTodoForm(projectName, isItNewOrEditTodo) {
 		}
 
 		if (dueDateField.value !== '') {
-			console.log(new Date(dueDateField.value));
 			dueDate.textContent = `Due: ${format(dueDateField.value + 'T00:00:00', 'MM/dd/yyyy')}`;
 		} else if (dueDateField.value === '') {
 			dueDate.textContent = 'Due: Not Specified';
@@ -246,6 +254,7 @@ function showTodoForm(projectName, isItNewOrEditTodo) {
 			let viewEditNotes = notes.value;
 			let viewEditChecklist = [];
 
+			// repopulate fields of todo for editing
 			edit.addEventListener('click', e => {
 				todoNameField.value = viewEditTodoName;
 				description.value = viewEditDescription;
@@ -255,6 +264,16 @@ function showTodoForm(projectName, isItNewOrEditTodo) {
 				notes.value = viewEditNotes;
 				// placeholder to handle checklist later //
 				showTodoForm(projectName, 'Edit');
+			});
+
+			// delete todo from both the UI and from the database
+			del.addEventListener('click', e => {
+				for (let todo of todoList.childNodes) {
+					if (todo.dataset.name === viewEditTodoName) {
+						todoList.removeChild(todo);
+						PubSub.publish('deleteTodo', { projectName, todoName: viewEditTodoName });
+					}
+				}
 			});
 		}
 
@@ -266,22 +285,36 @@ function showTodoForm(projectName, isItNewOrEditTodo) {
 			}
 		}
 
-		// save to database
-		// if (isItNewOrEditTodo === 'New') {
-		// 	alertUserIfTodoAlreadyExists();
-		// 	PubSub.publish('createTodo', {
-		// 		projectName,
-		// 		todoName: todoNameField.value,
-		// 		description: description.value,
-		// 		dueDate: dueDateField.value,
-		// 		status: checkedStatus.value,
-		// 		priority: priorityField.value,
-		// 		notes: notes.value,
-		// 		checklist: [],
-		// 	});
-		// } else if (isItNewOrEditTodo === 'Edit') {
-		// 	PubSub.publish('updateTodo', projectName);
-		// }
+		// IIFE to save todo to database
+		(function saveToDatabase() {
+			let dueDate = '';
+			if (dueDateField.value !== '') dueDate = dueDateField.value + 'T00:00:00';
+
+			if (isItNewOrEditTodo === 'New') {
+				alertUserIfTodoAlreadyExists();
+				PubSub.publish('createTodo', {
+					projectName,
+					todoName: todoNameField.value,
+					description: description.value,
+					dueDate,
+					status: checkedStatus.value,
+					priority: priorityField.value,
+					notes: notes.value,
+					checklist: [],
+				});
+			} else if (isItNewOrEditTodo === 'Edit') {
+				PubSub.publish('updateTodo', {
+					projectName,
+					todoName: todoNameField.value,
+					description: description.value,
+					dueDate,
+					status: checkedStatus.value,
+					priority: priorityField.value,
+					notes: notes.value,
+					checklist: [],
+				});
+			}
+		})();
 	}
 
 	function closeFormPopup() {
@@ -303,5 +336,17 @@ function showTodoForm(projectName, isItNewOrEditTodo) {
 		todoPopupForm.removeEventListener('keydown', e => {
 			if (e.key === 'Escape') closeFormPopup();
 		});
+	}
+}
+
+// this gets called, via PubSub subscription, when a project has a new todo or updated todo
+function moveLatestUpdatedProjectToTop(_, todo) {
+	let latestUpdatedProject = todo.projectName;
+	let projectDivs = Array.from(document.querySelectorAll('main > div')).toSpliced(0, 1);
+	const addNewProjectDiv = document.querySelector('main > div:first-child');
+	for (let projectDiv of projectDivs) {
+		if (projectDiv.dataset.project === latestUpdatedProject) {
+			addNewProjectDiv.insertAdjacentElement('afterend', projectDiv);
+		}
 	}
 }

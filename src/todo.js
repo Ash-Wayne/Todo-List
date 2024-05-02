@@ -56,8 +56,11 @@ export function updateTodo(projectName, todoName, description = '', dueDate = ''
 
 	let projectToUpdate = getProject(projectName);
 
-	let todoToUpdate = readTodo(projectName, todoName);
-	todoToUpdate = todo;
+	let indexOfTodoToUpdate = projectToUpdate.listOfTodos.findIndex(todo => {
+		if (todo.todoName === todoName) return true;
+	});
+
+	projectToUpdate.listOfTodos[indexOfTodoToUpdate] = todo;
 
 	updateProject(projectName, projectToUpdate);
 
