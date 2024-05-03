@@ -47,14 +47,13 @@ main > div:first-child {
 	font-weight: bold;
 }
 
-main > div:first-child > img {
+#plus {
 	cursor: pointer;
 	width: 100px;
 	height: auto;
 }
 
 .new-project-input-dialog {
-	visibility: hidden;
 	width: 350px;
 	height: 140px;
 	position: absolute;
@@ -71,8 +70,8 @@ main > div:first-child > img {
 	gap: 0.8em;
 }
 
-.new-project-input-dialog > img,
-.todo-popup-form > img {
+#close-new-project-input-dialog-btn,
+#close-todo-popup-form-btn {
 	width: 15px;
 	height: auto;
 	align-self: end;
@@ -82,12 +81,11 @@ main > div:first-child > img {
 	cursor: pointer;
 }
 
-.new-project-input-dialog > button {
+#add-button {
 	width: 60px;
 }
 
 .todo-popup-form {
-	visibility: hidden;
 	width: 410px;
 	height: 485px;
 	position: absolute;
@@ -123,13 +121,13 @@ textarea {
 	font-family: 'Arial';
 }
 
-.todo-popup-form > h2 {
+#todo-form-project-name {
 	align-self: center;
 	margin-bottom: 0.5em;
 	font-weight: bold;
 }
 
-.todo-popup-form > button:first-of-type {
+#checklist-btn {
 	align-self: start;
 	padding: 0.1em 0.7em;
 	margin-left: 6.4em;
@@ -137,8 +135,74 @@ textarea {
 	cursor: pointer;
 }
 
-.todo-popup-form > button:last-of-type {
+#todo-save-btn {
 	align-self: center;
 	padding: 0.1em 0.7em;
 	cursor: pointer;
+}
+
+.hidden {
+	visibility: hidden;
+}
+
+.project-name {
+	font-weight: bold;
+	text-align: center;
+	font-size: 1.3rem;
+}
+
+.todo-list {
+	padding: 0 1em 1em 1em;
+	height: 60%;
+	display: flex;
+	flex-direction: column;
+	gap: 0.8em;
+	overflow-y: auto;
+}
+
+.new-todo-btn {
+	width: 50%;
+	align-self: center;
+	padding: 0.5em 0;
+	cursor: pointer;
+}
+
+.lightgraybg {
+	background-color: lightgray;
+}
+
+.todo {
+	display: grid;
+	grid-template-columns: 1.7fr 0.9fr 0.8fr;
+	grid-template-rows: 1fr 1fr;
+	height: 25%;
+	gap: 0.3em;
+	flex-shrink: 0;
+}
+
+.todo-name {
+	width: 85%;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.priority-and-status {
+	text-align: center;
+}
+
+.edit-and-delete {
+	cursor: pointer;
+}
+
+.lightgreenbg {
+	background-color: lightgreen;
+}
+
+.yellowbg {
+	background-color: yellow;
+}
+
+.redbg {
+	background-color: red;
 }

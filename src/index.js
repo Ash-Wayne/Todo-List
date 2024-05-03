@@ -29,15 +29,19 @@ function renderProjectsFromDatabase() {
 	});
 }
 
+const addNewProjectDiv = (function () {
+	return document.querySelector('main > div:first-child');
+})();
+
 function setupAddNewProjectListener() {
-	const plusBtn = document.querySelector('main > div:first-child > img');
+	const plusBtn = document.getElementById('plus');
 	const newProjectInputDialog = document.querySelector('.new-project-input-dialog');
-	const inputFieldInDialog = document.querySelector('.new-project-input-dialog > input');
-	const addBtnInDialog = document.querySelector('.new-project-input-dialog > button');
-	const closeBtnInDialog = document.querySelector('.new-project-input-dialog > img');
+	const inputFieldInDialog = document.getElementById('input-field-project-name');
+	const addBtnInDialog = document.getElementById('add-button');
+	const closeBtnInDialog = document.getElementById('close-new-project-input-dialog-btn');
 
 	plusBtn.addEventListener('click', e => {
-		newProjectInputDialog.setAttribute('style', 'visibility: visible;');
+		newProjectInputDialog.classList.remove('hidden');
 		inputFieldInDialog.focus();
 	});
 
@@ -61,29 +65,28 @@ function setupAddNewProjectListener() {
 	}
 
 	function closeDialog() {
-		newProjectInputDialog.setAttribute('style', 'visibility: hidden;');
+		newProjectInputDialog.classList.add('hidden');
 		inputFieldInDialog.value = '';
 	}
 }
 
 function addNewProject(projectName) {
-	const addNewProjectDiv = document.querySelector('main > div:first-child');
-
 	const projectDiv = document.createElement('div');
 	projectDiv.dataset.project = projectName;
 
 	const name = document.createElement('h2');
 	name.textContent = projectName;
-	name.setAttribute('style', 'font-weight: bold; text-align: center; font-size: 1.3rem;');
+	name.classList.add('project-name');
 
 	const todoList = document.createElement('div');
-	todoList.setAttribute('style', 'padding: 0 1em 1em 1em; height: 60%; display: flex; flex-direction: column; gap: .8em; overflow-y: auto;');
+	todoList.classList.add('todo-list');
 
 	const newTodoBtn = document.createElement('button');
 	newTodoBtn.textContent = 'Add New Todo';
-	newTodoBtn.setAttribute('style', 'width: 50%; align-self: center; padding: .5em 0; cursor: pointer;');
+	newTodoBtn.classList.add('new-todo-btn');
 	newTodoBtn.addEventListener('click', e => {
 		showTodoForm(projectName, 'New');
+		setTodoFormListeners(projectName, 'New');
 	});
 
 	projectDiv.appendChild(name);
@@ -107,246 +110,276 @@ function isProjectNotInDatabase(projectName) {
 	return true;
 }
 
-function showTodoForm(projectName, isItNewOrEditTodo) {
+const todoPopupFormElements = (function () {
 	const todoPopupForm = document.querySelector('.todo-popup-form');
-	const closeBtn = document.querySelector('.todo-popup-form > img');
-	const project = document.querySelector('.todo-popup-form > h2');
-	const todoNameField = document.querySelector('.todo-name > input');
-	const description = document.querySelector('.description > textarea');
-	const dueDateField = document.querySelector('.due-date > input');
-	const notStartedStatus = document.querySelector('.status input[value="Not Started"]');
-	const priorityField = document.querySelector('.priority > select');
-	const notes = document.querySelector('.notes > textarea');
-	const checklistBtn = document.querySelector('.todo-popup-form > button:first-of-type');
-	const saveBtn = document.querySelector('.todo-popup-form > button:last-of-type');
+	const closeBtn = document.getElementById('close-todo-popup-form-btn');
+	const project = document.getElementById('todo-form-project-name');
+	const todoNameField = document.getElementById('todo-name');
+	const description = document.getElementById('description');
+	const dueDateField = document.getElementById('due-date');
+	const notStartedStatus = document.getElementById('not-started');
+	const priorityField = document.getElementById('priority');
+	const notes = document.getElementById('notes');
+	const checklistBtn = document.getElementById('checklist-btn');
+	const saveBtn = document.getElementById('todo-save-btn');
 
-	project.textContent = `Project: ${projectName}`;
+	return {
+		todoPopupForm,
+		closeBtn,
+		project,
+		todoNameField,
+		description,
+		dueDateField,
+		notStartedStatus,
+		priorityField,
+		notes,
+		checklistBtn,
+		saveBtn,
+	};
+})();
 
-	todoPopupForm.setAttribute('style', 'visibility: visible;');
+function getTodoFormCheckedStatus() {
+	return document.querySelector('input[name="status"]:checked');
+}
+
+function showTodoForm(projectName, isItNewOrEditTodo) {
+	todoPopupFormElements.project.textContent = `Project: ${projectName}`;
+
+	todoPopupFormElements.todoPopupForm.classList.remove('hidden');
 
 	// if new todo, focus on the todoName field and make it read-write, but if editing, then make it readonly
 	if (isItNewOrEditTodo === 'New') {
-		todoNameField.removeAttribute('readonly');
-		todoNameField.setAttribute('style', 'background-color: white;');
-		todoNameField.focus();
+		todoPopupFormElements.todoNameField.removeAttribute('readonly');
+		todoPopupFormElements.todoNameField.classList.remove('lightgraybg');
+		todoPopupFormElements.todoNameField.focus();
 	} else if (isItNewOrEditTodo === 'Edit') {
-		todoNameField.setAttribute('readonly', true);
-		todoNameField.setAttribute('style', 'background-color: lightgray;');
+		todoPopupFormElements.todoNameField.setAttribute('readonly', true);
+		todoPopupFormElements.todoNameField.classList.add('lightgraybg');
 	}
+}
 
-	saveBtn.addEventListener('click', saveTodo_CloseForm);
-
-	closeBtn.addEventListener('click', closeFormPopup);
-
-	todoPopupForm.addEventListener('keydown', e => {
-		if (e.key === 'Escape') closeFormPopup();
+function setTodoFormListeners(projectName, isItNewOrEditTodo) {
+	todoPopupFormElements.saveBtn.addEventListener('click', e => {
+		// if form validation checks fail, return and keep the form from saving and closing
+		if (runTodoFormValidationChecks(projectName, isItNewOrEditTodo) === false) return;
+		saveTodoToUI(projectName, isItNewOrEditTodo);
+		saveTodoToDatabase(projectName, isItNewOrEditTodo);
+		closeFormPopup();
 	});
 
-	function saveTodo_CloseForm() {
-		// if a field is not entered properly, saveToDo will return false and keep the popup from closing
-		if (saveTodo() === false) return;
-		closeFormPopup();
+	todoPopupFormElements.closeBtn.addEventListener('click', closeFormPopup);
+
+	todoPopupFormElements.todoPopupForm.addEventListener('keydown', e => {
+		if (e.key === 'Escape') closeFormPopup();
+	});
+}
+
+function runTodoFormValidationChecks(projectName, isItNewOrEditTodo) {
+	if (todoPopupFormElements.todoNameField.value === '') {
+		alert('Title is mandatory!');
+		return false;
 	}
 
-	function saveTodo() {
-		const projectDivs = Array.from(document.querySelectorAll('main > div'));
-
-		const checkedStatus = document.querySelector('.status input[name="status"]:checked');
-
-		let projectDiv;
-		for (let project_Div of projectDivs) {
-			if (project_Div.dataset.project === projectName) {
-				projectDiv = project_Div;
-			}
-		}
-
-		// get the todolist div which is the second child of projectDiv
-		const todoList = projectDiv.childNodes[1];
-
-		const todo = document.createElement('div');
-		const todoName = document.createElement('h3');
-		const dueDate = document.createElement('p');
-		const priority = document.createElement('p');
-		const status = document.createElement('p');
-		const edit = document.createElement('button');
-		const del = document.createElement('button');
-
-		todo.setAttribute(
-			'style',
-			'display: grid; grid-template-columns: 1.7fr .9fr .8fr; grid-template-rows: 1fr 1fr; height: 25%; gap: .3em; flex-shrink: 0;'
-		);
-		todo.dataset.name = todoNameField.value;
-
-		todoName.setAttribute('style', 'width: 85%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;');
-
-		if (todoNameField.value !== '') {
-			todoName.textContent = todoNameField.value;
-		} else if (todoNameField.value === '') {
-			alert('Title is mandatory!');
+	// if todo already exists, alert user and return false
+	if (isItNewOrEditTodo === 'New') {
+		if (readTodo(projectName, todoPopupFormElements.todoNameField.value).todoName === todoPopupFormElements.todoNameField.value) {
+			alert('Todo already exists');
 			return false;
 		}
+	}
+}
 
-		if (dueDateField.value !== '') {
-			dueDate.textContent = `Due: ${format(dueDateField.value + 'T00:00:00', 'MM/dd/yyyy')}`;
-		} else if (dueDateField.value === '') {
-			dueDate.textContent = 'Due: Not Specified';
+function saveTodoToUI(projectName, isItNewOrEditTodo) {
+	const todoList = getTodoListInUIToAddTo(projectName);
+
+	const todo = buildTodoUIElement();
+
+	// todo's childNodes 2 and 5 are its edit and del button elements
+	setListenersForViewEditAndDelete(projectName, todoList, todo.childNodes[2], todo.childNodes[5]);
+
+	// if new todo: add it to the list, if editing: replace the existing/old todo with the edited one
+	if (isItNewOrEditTodo === 'New') {
+		todoList.appendChild(todo);
+	} else if (isItNewOrEditTodo === 'Edit') {
+		let oldTodo;
+		for (let todo of todoList.childNodes) {
+			if (todo.dataset.name === todoPopupFormElements.todoNameField.value) oldTodo = todo;
 		}
+		todoList.replaceChild(todo, oldTodo);
+	}
+}
 
-		priority.textContent = priorityField.value;
-		priority.setAttribute('style', 'text-align: center;');
-		status.textContent = checkedStatus.value;
-		status.setAttribute('style', 'text-align: center;');
-		colorPriorityAndStatus();
+function getTodoListInUIToAddTo(projectName) {
+	const projectDivs = Array.from(document.querySelectorAll('main > div'));
 
-		edit.textContent = 'View/Edit';
-		edit.setAttribute('style', 'cursor: pointer;');
-		del.textContent = 'Delete';
-		del.setAttribute('style', 'cursor: pointer;');
-
-		setViewEdit_DeleteListeners();
-
-		todo.append(todoName, priority, edit, dueDate, status, del);
-
-		// if new todo: add it to the list, if editing: replace the existing/old todo with the edited one
-		if (isItNewOrEditTodo === 'New') {
-			alertUserIfTodoAlreadyExists();
-			todoList.appendChild(todo);
-		} else if (isItNewOrEditTodo === 'Edit') {
-			let oldTodo;
-			for (let todo of todoList.childNodes) {
-				if (todo.dataset.name === todoNameField.value) oldTodo = todo;
-			}
-			todoList.replaceChild(todo, oldTodo);
+	let projectDiv;
+	for (let project_Div of projectDivs) {
+		if (project_Div.dataset.project === projectName) {
+			projectDiv = project_Div;
 		}
-
-		function colorPriorityAndStatus() {
-			switch (priorityField.value) {
-				case 'Low':
-					priority.setAttribute('style', 'background-color: lightgreen;');
-					break;
-				case 'Medium':
-					priority.setAttribute('style', 'background-color: yellow;');
-					break;
-				case 'High':
-					priority.setAttribute('style', 'background-color: red;');
-					break;
-			}
-
-			switch (checkedStatus.value) {
-				case 'Not Started':
-					status.setAttribute('style', 'background-color: red;');
-					break;
-				case 'In-Progress':
-					status.setAttribute('style', 'background-color: yellow;');
-					break;
-				case 'Complete':
-					status.setAttribute('style', 'background-color: lightgreen;');
-					break;
-			}
-		}
-
-		function setViewEdit_DeleteListeners() {
-			// save field values so that they can be loaded later when "View/Edit" button is clicked
-			let viewEditTodoName = todoNameField.value;
-			let viewEditDescription = description.value;
-			let viewEditDueDate = dueDateField.value;
-			let viewEditPriority = priorityField.value;
-			let viewEditNotes = notes.value;
-			let viewEditChecklist = [];
-
-			// repopulate fields of todo for editing
-			edit.addEventListener('click', e => {
-				todoNameField.value = viewEditTodoName;
-				description.value = viewEditDescription;
-				dueDateField.value = viewEditDueDate;
-				checkedStatus.checked = true;
-				priorityField.value = viewEditPriority;
-				notes.value = viewEditNotes;
-				// placeholder to handle checklist later //
-				showTodoForm(projectName, 'Edit');
-			});
-
-			// delete todo from both the UI and from the database
-			del.addEventListener('click', e => {
-				for (let todo of todoList.childNodes) {
-					if (todo.dataset.name === viewEditTodoName) {
-						todoList.removeChild(todo);
-						PubSub.publish('deleteTodo', { projectName, todoName: viewEditTodoName });
-					}
-				}
-			});
-		}
-
-		function alertUserIfTodoAlreadyExists() {
-			// if todo already exists, alert user and return false
-			if (readTodo(projectName, todoNameField.value).todoName === todoNameField.value) {
-				alert('Todo already exists');
-				return false;
-			}
-		}
-
-		// IIFE to save todo to database
-		(function saveToDatabase() {
-			let dueDate = '';
-			if (dueDateField.value !== '') dueDate = dueDateField.value + 'T00:00:00';
-
-			if (isItNewOrEditTodo === 'New') {
-				alertUserIfTodoAlreadyExists();
-				PubSub.publish('createTodo', {
-					projectName,
-					todoName: todoNameField.value,
-					description: description.value,
-					dueDate,
-					status: checkedStatus.value,
-					priority: priorityField.value,
-					notes: notes.value,
-					checklist: [],
-				});
-			} else if (isItNewOrEditTodo === 'Edit') {
-				PubSub.publish('updateTodo', {
-					projectName,
-					todoName: todoNameField.value,
-					description: description.value,
-					dueDate,
-					status: checkedStatus.value,
-					priority: priorityField.value,
-					notes: notes.value,
-					checklist: [],
-				});
-			}
-		})();
 	}
 
-	function closeFormPopup() {
-		// hide the popup form
-		todoPopupForm.setAttribute('style', 'visibility: hidden;');
+	// get the todolist div which is the second child of projectDiv
+	return projectDiv.childNodes[1];
+}
 
-		// clear the field values
-		todoNameField.value = '';
-		description.value = '';
-		dueDateField.value = '';
-		notStartedStatus.checked = true;
-		priorityField.value = 'Medium';
-		notes.value = '';
+function buildTodoUIElement() {
+	const todo = document.createElement('div');
+	const todoName = document.createElement('h3');
+	const dueDate = document.createElement('p');
+	const priority = document.createElement('p');
+	const status = document.createElement('p');
+	const edit = document.createElement('button');
+	const del = document.createElement('button');
 
-		saveBtn.removeEventListener('click', saveTodoCloseForm);
+	todo.classList.add('todo');
+	todo.dataset.name = todoPopupFormElements.todoNameField.value;
 
-		closeBtn.removeEventListener('click', closeFormPopup);
+	todoName.classList.add('todo-name');
+	todoName.textContent = todoPopupFormElements.todoNameField.value;
 
-		todoPopupForm.removeEventListener('keydown', e => {
-			if (e.key === 'Escape') closeFormPopup();
+	if (todoPopupFormElements.dueDateField.value !== '') {
+		dueDate.textContent = `Due: ${format(todoPopupFormElements.dueDateField.value + 'T00:00:00', 'MM/dd/yyyy')}`;
+	} else if (todoPopupFormElements.dueDateField.value === '') {
+		dueDate.textContent = 'Due: Not Specified';
+	}
+
+	priority.textContent = todoPopupFormElements.priorityField.value;
+	priority.classList.add('priority-and-status');
+	status.textContent = getTodoFormCheckedStatus().value;
+	status.classList.add('priority-and-status');
+	colorPriorityAndStatus(priority, status);
+
+	edit.textContent = 'View/Edit';
+	edit.classList.add('edit-and-delete');
+	del.textContent = 'Delete';
+	del.classList.add('edit-and-delete');
+
+	todo.append(todoName, priority, edit, dueDate, status, del);
+
+	return todo;
+}
+
+function colorPriorityAndStatus(priority, status) {
+	switch (todoPopupFormElements.priorityField.value) {
+		case 'Low':
+			priority.classList.add('lightgreenbg');
+			break;
+		case 'Medium':
+			priority.classList.add('yellowbg');
+			break;
+		case 'High':
+			priority.classList.add('redbg');
+			break;
+	}
+
+	switch (getTodoFormCheckedStatus().value) {
+		case 'Not Started':
+			status.classList.add('redbg');
+			break;
+		case 'In-Progress':
+			status.classList.add('yellowbg');
+			break;
+		case 'Complete':
+			status.classList.add('lightgreenbg');
+			break;
+	}
+}
+
+function setListenersForViewEditAndDelete(projectName, todoList, edit, del) {
+	// save field values so that they can be loaded later when "View/Edit" button is clicked
+	let viewEditTodoName = todoPopupFormElements.todoNameField.value;
+	let viewEditDescription = todoPopupFormElements.description.value;
+	let viewEditDueDate = todoPopupFormElements.dueDateField.value;
+	let viewEditPriority = todoPopupFormElements.priorityField.value;
+	let viewEditNotes = todoPopupFormElements.notes.value;
+	let viewEditChecklist = [];
+
+	// repopulate fields of todo for editing
+	edit.addEventListener('click', e => {
+		todoPopupFormElements.todoNameField.value = viewEditTodoName;
+		todoPopupFormElements.description.value = viewEditDescription;
+		todoPopupFormElements.dueDateField.value = viewEditDueDate;
+		getTodoFormCheckedStatus().checked = true;
+		todoPopupFormElements.priorityField.value = viewEditPriority;
+		todoPopupFormElements.notes.value = viewEditNotes;
+		// placeholder to handle checklist later //
+		showTodoForm(projectName, 'Edit');
+	});
+
+	// delete todo from both the UI and from the database
+	del.addEventListener('click', e => {
+		for (let todo of todoList.childNodes) {
+			if (todo.dataset.name === viewEditTodoName) {
+				todoList.removeChild(todo);
+				PubSub.publish('deleteTodo', { projectName, todoName: viewEditTodoName });
+			}
+		}
+	});
+}
+
+function saveTodoToDatabase(projectName, isItNewOrEditTodo) {
+	let dueDate = '';
+	if (todoPopupFormElements.dueDateField.value !== '') dueDate = todoPopupFormElements.dueDateField.value + 'T00:00:00';
+
+	if (isItNewOrEditTodo === 'New') {
+		PubSub.publish('createTodo', {
+			projectName,
+			todoName: todoPopupFormElements.todoNameField.value,
+			description: todoPopupFormElements.description.value,
+			dueDate,
+			status: getTodoFormCheckedStatus().value,
+			priority: todoPopupFormElements.priorityField.value,
+			notes: todoPopupFormElements.notes.value,
+			checklist: [],
+		});
+	} else if (isItNewOrEditTodo === 'Edit') {
+		PubSub.publish('updateTodo', {
+			projectName,
+			todoName: todoPopupFormElements.todoNameField.value,
+			description: todoPopupFormElements.description.value,
+			dueDate,
+			status: getTodoFormCheckedStatus().value,
+			priority: todoPopupFormElements.priorityField.value,
+			notes: todoPopupFormElements.notes.value,
+			checklist: [],
 		});
 	}
+}
+
+function closeFormPopup() {
+	// hide the popup form
+	todoPopupFormElements.todoPopupForm.classList.add('hidden');
+
+	// clear the field values
+	todoPopupFormElements.todoNameField.value = '';
+	todoPopupFormElements.description.value = '';
+	todoPopupFormElements.dueDateField.value = '';
+	todoPopupFormElements.notStartedStatus.checked = true;
+	todoPopupFormElements.priorityField.value = 'Medium';
+	todoPopupFormElements.notes.value = '';
+
+	todoPopupFormElements.saveBtn.removeEventListener('click', saveTodo_CloseForm);
+
+	todoPopupFormElements.closeBtn.removeEventListener('click', closeFormPopup);
+
+	todoPopupFormElements.todoPopupForm.removeEventListener('keydown', e => {
+		if (e.key === 'Escape') closeFormPopup();
+	});
 }
 
 // this gets called, via PubSub subscription, when a project has a new todo or updated todo
 function moveLatestUpdatedProjectToTop(_, todo) {
 	let latestUpdatedProject = todo.projectName;
 	let projectDivs = Array.from(document.querySelectorAll('main > div')).toSpliced(0, 1);
-	const addNewProjectDiv = document.querySelector('main > div:first-child');
+	let divToMoveUp;
+
 	for (let projectDiv of projectDivs) {
 		if (projectDiv.dataset.project === latestUpdatedProject) {
-			addNewProjectDiv.insertAdjacentElement('afterend', projectDiv);
+			divToMoveUp = projectDiv;
+			break;
 		}
 	}
+
+	addNewProjectDiv.insertAdjacentElement('afterend', divToMoveUp);
 }

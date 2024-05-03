@@ -13,20 +13,20 @@
 		<main>
 			<div>
 				<p style="font-size: 1.2rem">Add New Project</p>
-				<img src="./plus.png" alt="Add New Project" width="100" height="auto" />
+				<img src="./plus.png" alt="Add New Project" width="100" height="auto" id="plus" />
 			</div>
 		</main>
 
-		<div class="new-project-input-dialog" tabindex="0">
-			<img src="./close.jpg" alt="Close" width="10" height="auto" />
+		<div class="new-project-input-dialog hidden" tabindex="0">
+			<img src="./close.jpg" alt="Close" width="10" height="auto" id="close-new-project-input-dialog-btn" />
 			<label for="project-name">Enter project name:</label>
-			<input type="text" id="project-name" />
-			<button>Add</button>
+			<input type="text" id="input-field-project-name" />
+			<button id="add-button">Add</button>
 		</div>
 
-		<form class="todo-popup-form" tabindex="0">
-			<img src="./close.jpg" alt="Close" width="10" height="auto" />
-			<h2>Project:</h2>
+		<form class="todo-popup-form hidden" tabindex="0">
+			<img src="./close.jpg" alt="Close" width="10" height="auto" id="close-todo-popup-form-btn" />
+			<h2 id="todo-form-project-name">Project:</h2>
 			<div class="todo-name">
 				<label for="todo-name">Todo: </label>
 				<input type="text" id="todo-name" name="todo-name" spellcheck="false" />
@@ -62,8 +62,8 @@
 				<label for="notes">Notes: </label>
 				<textarea name="notes" id="notes" cols="30" rows="5" spellcheck="false"></textarea>
 			</div>
-			<button type="button">Checklist</button>
-			<button type="button">Save</button>
+			<button type="button" id="checklist-btn">Checklist</button>
+			<button type="button" id="todo-save-btn">Save</button>
 		</form>
 	</body>
 </html>
