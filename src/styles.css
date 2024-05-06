@@ -6,8 +6,11 @@
 }
 
 body {
-	position: relative;
 	min-height: 100vh;
+}
+
+.relative-position {
+	position: relative;
 }
 
 header {
@@ -53,16 +56,20 @@ main > div:first-child {
 	height: auto;
 }
 
-.new-project-input-dialog {
+dialog:has(.new-project-input-dialog) {
 	width: 350px;
 	height: 140px;
 	position: absolute;
-	top: 0;
+	top: 10vh;
 	right: 0;
-	bottom: 0;
 	left: 0;
 	margin: auto;
 	border: 1px solid black;
+}
+
+.new-project-input-dialog {
+	width: 100%;
+	height: 100%;
 	background-color: rgb(232, 230, 230);
 	display: flex;
 	flex-direction: column;
@@ -83,10 +90,11 @@ main > div:first-child {
 
 #add-button {
 	width: 60px;
+	cursor: pointer;
 }
 
-.todo-popup-form {
-	width: 410px;
+dialog:has(.todo-popup-form) {
+	width: 430px;
 	height: 485px;
 	position: absolute;
 	top: 0;
@@ -94,26 +102,35 @@ main > div:first-child {
 	bottom: 0;
 	left: 0;
 	margin: auto;
+	border: 1px solid black;
+}
+
+.todo-popup-form {
+	width: 410px;
+	height: 100%;
 	display: flex;
 	flex-direction: column;
 	gap: 1em;
-	border: 1px solid black;
 	background-color: rgb(232, 230, 230);
 	padding: 0 0 0 20px;
-	outline: none;
 }
 
-.todo-popup-form label,
-.todo-popup-form fieldset p {
+.todo-popup-form label:first-child,
+#status-label {
 	display: inline-block;
 	width: 80px;
 	text-align: right;
 	vertical-align: top;
 }
 
-.todo-popup-form input,
-.todo-popup-form textarea,
-.todo-popup-form select {
+.status-options {
+	text-align: right;
+	vertical-align: top;
+}
+
+input,
+textarea,
+select {
 	outline: none;
 }
 
@@ -139,10 +156,6 @@ textarea {
 	align-self: center;
 	padding: 0.1em 0.7em;
 	cursor: pointer;
-}
-
-.hidden {
-	visibility: hidden;
 }
 
 .project-name {

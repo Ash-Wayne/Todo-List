@@ -25,11 +25,11 @@ function createNewProjectWrapper(_, projectName) {
 }
 
 function createTodoWrapper(_, todo) {
-	createTodo(todo.projectName, todo.todoName, todo.description, todo.dueDate, todo.status, todo.priority, todo.notes, todo.checklist);
+	createTodo(todo.projectName, todo.todoName, todo.description, todo.dueDate, todo.priority, todo.status, todo.notes, todo.checklist);
 }
 
 function updateTodoWrapper(_, todo) {
-	updateTodo(todo.projectName, todo.todoName, todo.description, todo.dueDate, todo.status, todo.priority, todo.notes, todo.checklist);
+	updateTodo(todo.projectName, todo.todoName, todo.description, todo.dueDate, todo.priority, todo.status, todo.notes, todo.checklist);
 }
 
 function deleteTodoWrapper(_, todo) {

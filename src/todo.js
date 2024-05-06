@@ -2,7 +2,7 @@ import { format } from 'date-fns';
 import { getProject } from './projects';
 import { updateProject } from './projects';
 
-export function createTodo(projectName, todoName, description = '', dueDate = '', todoStatus = '', priority = '', notes = '', checklist) {
+export function createTodo(projectName, todoName, description = '', dueDate = '', priority = '', todoStatus = '', notes = '', checklist) {
 	let due;
 	if (dueDate === '') due = '';
 	else due = format(dueDate, 'MM/dd/yyyy');
@@ -13,8 +13,8 @@ export function createTodo(projectName, todoName, description = '', dueDate = ''
 		todoName,
 		description,
 		due,
-		todoStatus,
 		priority,
+		todoStatus,
 		notes,
 		checklist,
 	};
@@ -39,7 +39,7 @@ export function readTodo(projectName, todoName) {
 	return false;
 }
 
-export function updateTodo(projectName, todoName, description = '', dueDate = '', todoStatus, priority = '', notes = '', checklist) {
+export function updateTodo(projectName, todoName, description = '', dueDate = '', priority = '', todoStatus, notes = '', checklist) {
 	let due;
 	if (dueDate === '') due = '';
 	else due = format(dueDate, 'MM/dd/yyyy');
@@ -48,8 +48,8 @@ export function updateTodo(projectName, todoName, description = '', dueDate = ''
 		todoName,
 		description,
 		due,
-		todoStatus,
 		priority,
+		todoStatus,
 		notes,
 		checklist,
 	};
