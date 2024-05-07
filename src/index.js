@@ -1,5 +1,7 @@
 import './reset.css';
 import './styles.css';
+import EditImage from './edit.png';
+import DeleteImage from './delete.png';
 import { format } from 'date-fns';
 import PubSub from 'pubsub-js';
 import { loadProjectsFromDatabase } from './on-load.js';
@@ -59,6 +61,15 @@ const todoPopupFormElements = (function () {
 	};
 })();
 
+const projectDelConfirmDialogElem = (function () {
+	const confirmDialog = document.querySelector('dialog:has(.confirmation-dialog)');
+	const yesBtn = document.getElementById('yes-button');
+	const noBtn = document.getElementById('no-button');
+
+	return { confirmDialog, yesBtn, noBtn };
+})();
+
+// these are used to capture event listener variables in one area so they can be removed in another area later
 const eventListenerReferences = (function () {
 	let saveTodoAndCloseForm;
 	let onCloseTodoPopupForm;
@@ -132,6 +143,22 @@ function addNewProject(projectName) {
 	name.textContent = projectName;
 	name.classList.add('project-name');
 
+	const editIcon = new Image();
+	editIcon.src = EditImage;
+	editIcon.classList.add('edit-icon');
+	editIcon.addEventListener('click', e => {
+		editProjectName(name);
+		confirmEditProjectName(name, editProjectName(name));
+	});
+
+	const deleteIcon = new Image();
+	deleteIcon.src = DeleteImage;
+	deleteIcon.classList.add('delete-icon');
+	deleteIcon.addEventListener('click', e => {
+		showOrCloseDeleteProjectConirmation('Show');
+		addProjDelYesNoListeners(projectName);
+	});
+
 	const todoList = document.createElement('div');
 	todoList.classList.add('todo-list');
 	todoList.classList.add('relative-position');
@@ -158,9 +185,7 @@ function addNewProject(projectName) {
 		setTodoFormListeners(projectName, 'New');
 	});
 
-	projectDiv.appendChild(name);
-	projectDiv.appendChild(todoList);
-	projectDiv.appendChild(newTodoBtn);
+	projectDiv.append(name, editIcon, deleteIcon, todoList, newTodoBtn);
 	addNewProjectDiv.insertAdjacentElement('afterend', projectDiv);
 
 	// this will only add new project to database if it doesn't already exist
@@ -177,6 +202,53 @@ function isProjectNotInDatabase(projectName) {
 	}
 
 	return true;
+}
+
+function editProjectName(nameLabel) {
+	let oldName = nameLabel.textContent;
+	nameLabel.contentEditable = true;
+	window.getSelection().selectAllChildren(nameLabel);
+	return oldName;
+}
+
+function confirmEditProjectName(nameLabel, oldName) {
+	nameLabel.addEventListener('keydown', e => {
+		if (e.key === 'Enter') {
+			e.preventDefault();
+			nameLabel.contentEditable = false;
+			let newName = nameLabel.textContent;
+			PubSub.publish('editProjectName', { oldName, newName });
+		}
+	});
+}
+
+function showOrCloseDeleteProjectConirmation(showOrClose) {
+	if (showOrClose === 'Show') projectDelConfirmDialogElem.confirmDialog.showModal();
+	else if (showOrClose === 'Close') projectDelConfirmDialogElem.confirmDialog.close();
+}
+
+function addProjDelYesNoListeners(projectName) {
+	projectDelConfirmDialogElem.yesBtn.addEventListener(
+		'click',
+		e => {
+			removeProjectFromUI(projectName);
+			deleteProjectFromDatabase(projectName);
+			showOrCloseDeleteProjectConirmation('Close');
+		},
+		{ once: true }
+	);
+
+	projectDelConfirmDialogElem.noBtn.addEventListener(
+		'click',
+		e => {
+			showOrCloseDeleteProjectConirmation('Close');
+		},
+		{ once: true }
+	);
+}
+
+function getProjectDivs() {
+	return Array.from(document.querySelectorAll('main > div')).toSpliced(0, 1);
 }
 
 function getTodoFormCheckedStatus() {
@@ -285,17 +357,15 @@ function saveTodoToUI(projectName, isItNewOrEditTodo) {
 }
 
 function getTodoListInUIToAddTo(projectName) {
-	const projectDivs = Array.from(document.querySelectorAll('main > div'));
-
 	let projectDiv;
-	for (let project_Div of projectDivs) {
+	for (let project_Div of getProjectDivs()) {
 		if (project_Div.dataset.project === projectName) {
 			projectDiv = project_Div;
 		}
 	}
 
-	// get the todolist div which is the second child of projectDiv
-	return projectDiv.childNodes[1];
+	// get the todolist div which is the fourth child of projectDiv
+	return projectDiv.childNodes[3];
 }
 
 function buildTodoUIElement(todoNameValue, dueDateValue, priorityValue, statusValue) {
@@ -467,13 +537,26 @@ function removeTodoFormListeners() {
 	todoPopupFormElements.todoPopupForm.removeEventListener('keydown', onEscapeTodoPopupForm);
 }
 
+function removeProjectFromUI(projectName) {
+	const main = document.querySelector('main');
+	for (let projectDiv of getProjectDivs()) {
+		if (projectDiv.dataset.project === projectName) {
+			main.removeChild(projectDiv);
+			return;
+		}
+	}
+}
+
+function deleteProjectFromDatabase(projectName) {
+	PubSub.publish('deleteProject', projectName);
+}
+
 // this gets called, via PubSub subscription, when a project has a new todo or updated todo
 function moveLatestUpdatedProjectToTop(_, todo) {
 	let latestUpdatedProject = todo.projectName;
-	let projectDivs = Array.from(document.querySelectorAll('main > div')).toSpliced(0, 1);
 	let divToMoveUp;
 
-	for (let projectDiv of projectDivs) {
+	for (let projectDiv of getProjectDivs()) {
 		if (projectDiv.dataset.project === latestUpdatedProject) {
 			divToMoveUp = projectDiv;
 			break;

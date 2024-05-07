@@ -1,4 +1,4 @@
-import { createNewProject } from './projects.js';
+import { createNewProject, getProject, updateProject } from './projects.js';
 import { deleteProject } from './projects.js';
 import { createTodo } from './todo.js';
 import { updateTodo } from './todo.js';
@@ -18,6 +18,8 @@ export function setupCustomPubSubListeners() {
 	PubSub.subscribe('createTodo', createTodoWrapper);
 	PubSub.subscribe('updateTodo', updateTodoWrapper);
 	PubSub.subscribe('deleteTodo', deleteTodoWrapper);
+	PubSub.subscribe('editProjectName', editProjectNameWrapper);
+	PubSub.subscribe('deleteProject', deleteProjectWrapper);
 }
 
 function createNewProjectWrapper(_, projectName) {
@@ -34,4 +36,14 @@ function updateTodoWrapper(_, todo) {
 
 function deleteTodoWrapper(_, todo) {
 	deleteTodo(todo.projectName, todo.todoName);
+}
+
+function editProjectNameWrapper(_, projectNames) {
+	let project = getProject(projectNames.oldName);
+	deleteProject(projectNames.oldName);
+	updateProject(projectNames.newName, project);
+}
+
+function deleteProjectWrapper(_, projectName) {
+	deleteProject(projectName);
 }
