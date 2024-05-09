@@ -3,6 +3,7 @@
 ::after {
 	padding: 0;
 	margin: 0;
+	outline: none;
 }
 
 body {
@@ -11,6 +12,10 @@ body {
 
 .relative-position {
 	position: relative;
+}
+
+.absolute-position {
+	position: absolute;
 }
 
 header {
@@ -41,20 +46,26 @@ main > div {
 	padding: 0.5em 0 0.8em 0;
 }
 
+.edit-icon-div {
+	width: 15px;
+	right: 20px;
+	top: 9px;
+}
+
+.del-icon-div {
+	width: 17px;
+	right: 0px;
+}
+
 .edit-icon {
 	width: 15px;
 	height: auto;
-	position: absolute;
-	right: 20px;
-	top: 9px;
 	cursor: pointer;
 }
 
 .delete-icon {
 	width: 17px;
 	height: auto;
-	position: absolute;
-	right: 0px;
 	cursor: pointer;
 }
 
@@ -96,7 +107,8 @@ dialog:has(.new-project-input-dialog) {
 }
 
 #close-new-project-input-dialog-btn,
-#close-todo-popup-form-btn {
+#close-todo-popup-form-btn,
+#close-checklist-btn {
 	width: 15px;
 	height: auto;
 	align-self: end;
@@ -129,7 +141,7 @@ dialog:has(.todo-popup-form) {
 	display: flex;
 	flex-direction: column;
 	gap: 1em;
-	background-color: rgb(232, 230, 230);
+	background-color: rgb(238, 236, 236);
 	padding: 0 0 0 20px;
 }
 
@@ -197,6 +209,7 @@ textarea {
 	align-self: center;
 	padding: 0.5em 0;
 	cursor: pointer;
+	outline: none;
 }
 
 .lightgraybg {
@@ -274,4 +287,81 @@ dialog:has(.confirmation-dialog) {
 	cursor: pointer;
 	outline: none;
 	width: 10%;
+}
+
+.tooltip-regular {
+	background-color: rgb(236, 234, 234);
+	font-size: 14px;
+	left: 15px;
+	bottom: 15px;
+	z-index: 1;
+}
+
+.tooltip-rightmost {
+	background-color: rgb(236, 234, 234);
+	font-size: 14px;
+	right: 15px;
+	bottom: 15px;
+	z-index: 1;
+}
+
+.hidden {
+	visibility: hidden;
+}
+
+dialog:has(.checklist) {
+	width: 430px;
+	height: 485px;
+	position: fixed;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	margin: auto;
+	border: 1px solid black;
+}
+
+.checklist {
+	width: 430px;
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	gap: 2em;
+	background-color: rgb(214, 211, 211);
+}
+
+.checklist-bottom-buttons-div {
+	display: flex;
+	gap: 2em;
+	align-self: center;
+}
+
+#add-new-item-btn,
+#done-checklist-btn,
+#save-new-checklist-item-btn {
+	width: 8em;
+	outline: none;
+	cursor: pointer;
+}
+
+.checklist-items-div {
+	display: flex;
+	flex-direction: column;
+	gap: 2em;
+}
+
+.checklist-item-div {
+	display: grid;
+	grid-template-columns: 5fr 1.6fr 1fr 1fr;
+	margin-left: 1.8em;
+}
+
+.input-field-div-for-new-item {
+	display: flex;
+	justify-content: center;
+	gap: 2em;
+}
+
+.display-none {
+	display: none;
 }

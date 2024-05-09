@@ -1,5 +1,6 @@
 import './reset.css';
 import './styles.css';
+import './toggle-switch.css';
 import EditImage from './edit.png';
 import DeleteImage from './delete.png';
 import { format } from 'date-fns';
@@ -7,14 +8,21 @@ import PubSub from 'pubsub-js';
 import { loadProjectsFromDatabase } from './on-load.js';
 import { setupCustomPubSubListeners } from './background-logic.js';
 import { readTodo } from './todo.js';
+import { readChecklistFromMemory } from './checklist.js';
 
-const addNewProjectDiv = document.querySelector('main > div:first-child');
+const baseElements = (function () {
+	const mainDiv = document.querySelector('main');
+	const addNewProjectDiv = document.querySelector('main > div:first-child');
+
+	return { mainDiv, addNewProjectDiv };
+})();
 
 let projects = loadProjectsFromDatabase();
 
 setupCustomPubSubListeners();
 PubSub.subscribe('createTodo', moveLatestUpdatedProjectToTop);
 PubSub.subscribe('updateTodo', moveLatestUpdatedProjectToTop);
+PubSub.subscribe('projectPositionChange', reassignToolTipPositions);
 
 const todoPopupFormElements = (function () {
 	const todoPopupForm = document.querySelector('dialog:has(.todo-popup-form)');
@@ -31,6 +39,12 @@ const todoPopupFormElements = (function () {
 	const checklistBtn = document.getElementById('checklist-btn');
 	const saveBtn = document.getElementById('todo-save-btn');
 
+	let checklist = [];
+
+	function setChecklistValue(checklistValue) {
+		checklist = checklistValue;
+	}
+
 	function getTodoFormInputFieldValues() {
 		return {
 			todoName: todoNameField.value,
@@ -39,11 +53,12 @@ const todoPopupFormElements = (function () {
 			priority: priorityField.value,
 			todoStatus: getTodoFormCheckedStatus().value,
 			notes: notes.value,
-			checklist: [],
+			checklist,
 		};
 	}
 
 	return {
+		setChecklistValue,
 		getTodoFormInputFieldValues,
 		todoPopupForm,
 		closeBtn,
@@ -61,6 +76,30 @@ const todoPopupFormElements = (function () {
 	};
 })();
 
+const checklistElements = (function () {
+	const checklistPopup = document.querySelector('dialog:has(.checklist)');
+	const checklistBottomBtnsDiv = document.querySelector('.checklist-bottom-buttons-div');
+	const addNewItemBtn = document.getElementById('add-new-item-btn');
+	const doneChecklistBtn = document.getElementById('done-checklist-btn');
+	const closeBtn = document.getElementById('close-checklist-btn');
+	const inputFieldDivForNewItem = document.querySelector('.input-field-div-for-new-item');
+	const inputFieldForNewItem = document.getElementById('input-field-for-new-item');
+	const saveNewChecklistItemBtn = document.getElementById('save-new-checklist-item-btn');
+	const checklistItemsDiv = document.querySelector('.checklist-items-div');
+
+	return {
+		checklistPopup,
+		checklistBottomBtnsDiv,
+		addNewItemBtn,
+		doneChecklistBtn,
+		closeBtn,
+		inputFieldDivForNewItem,
+		inputFieldForNewItem,
+		saveNewChecklistItemBtn,
+		checklistItemsDiv,
+	};
+})();
+
 const projectDelConfirmDialogElem = (function () {
 	const confirmDialog = document.querySelector('dialog:has(.confirmation-dialog)');
 	const yesBtn = document.getElementById('yes-button');
@@ -71,11 +110,29 @@ const projectDelConfirmDialogElem = (function () {
 
 // these are used to capture event listener variables in one area so they can be removed in another area later
 const eventListenerReferences = (function () {
+	let onClickChecklistBtn;
 	let saveTodoAndCloseForm;
 	let onCloseTodoPopupForm;
 	let onEscapeTodoPopupForm;
+	let showInputFieldForNewChecklistItem;
+	let saveChecklistAndClosePopup;
+	let onCloseChecklistPopup;
+	let onEscapeChecklistPopup;
+	let doneChecklistAndClosePopup;
+	let saveNewChecklistItem;
 
-	return { saveTodoAndCloseForm, onCloseTodoPopupForm, onEscapeTodoPopupForm };
+	return {
+		onClickChecklistBtn,
+		saveTodoAndCloseForm,
+		onCloseTodoPopupForm,
+		onEscapeTodoPopupForm,
+		showInputFieldForNewChecklistItem,
+		saveChecklistAndClosePopup,
+		onCloseChecklistPopup,
+		onEscapeChecklistPopup,
+		doneChecklistAndClosePopup,
+		saveNewChecklistItem,
+	};
 })();
 
 initializeApp();
@@ -139,25 +196,12 @@ function addNewProject(projectName) {
 	const projectDiv = document.createElement('div');
 	projectDiv.dataset.project = projectName;
 
-	const name = document.createElement('h2');
-	name.textContent = projectName;
-	name.classList.add('project-name');
+	const nameLabel = document.createElement('h2');
+	nameLabel.textContent = projectName;
+	nameLabel.classList.add('project-name');
 
-	const editIcon = new Image();
-	editIcon.src = EditImage;
-	editIcon.classList.add('edit-icon');
-	editIcon.addEventListener('click', e => {
-		editProjectName(name);
-		confirmEditProjectName(name, editProjectName(name));
-	});
-
-	const deleteIcon = new Image();
-	deleteIcon.src = DeleteImage;
-	deleteIcon.classList.add('delete-icon');
-	deleteIcon.addEventListener('click', e => {
-		showOrCloseDeleteProjectConirmation('Show');
-		addProjDelYesNoListeners(projectName);
-	});
+	const editIconDiv = buildProjectNameEditIcon(nameLabel);
+	const deleteIconDiv = buildProjectDeleteIcon(projectName);
 
 	const todoList = document.createElement('div');
 	todoList.classList.add('todo-list');
@@ -169,7 +213,7 @@ function addNewProject(projectName) {
 		if (project.projectName === projectName) {
 			project.projectTodos.forEach(todo => {
 				const todoUIElement = buildTodoUIElement(todo.todoName, 'from database:' + todo.due, todo.priority, todo.todoStatus);
-				setListenersForViewEditAndDelete(projectName, todoList, todo, todoUIElement.childNodes[2], todoUIElement.childNodes[5]);
+				setListenersForViewEditAndDelete(projectName, todoList, todo, todoUIElement.children[2], todoUIElement.children[5]);
 				todoList.appendChild(todoUIElement);
 			});
 
@@ -185,13 +229,52 @@ function addNewProject(projectName) {
 		setTodoFormListeners(projectName, 'New');
 	});
 
-	projectDiv.append(name, editIcon, deleteIcon, todoList, newTodoBtn);
-	addNewProjectDiv.insertAdjacentElement('afterend', projectDiv);
+	projectDiv.append(nameLabel, editIconDiv, deleteIconDiv, todoList, newTodoBtn);
+	baseElements.addNewProjectDiv.insertAdjacentElement('afterend', projectDiv);
+
+	PubSub.publish('projectPositionChange', null);
 
 	// this will only add new project to database if it doesn't already exist
 	// if this function is being used merely to add projects (to UI) that you've loaded from database...
 	// and they're not actually brand new projects, then don't run this
 	if (isProjectNotInDatabase(projectName) === true) PubSub.publish('addNewProject', projectName);
+}
+
+function buildProjectNameEditIcon(nameLabel) {
+	const editDiv = document.createElement('div');
+	editDiv.classList.add('edit-icon-div', 'absolute-position');
+
+	const editIcon = new Image();
+	editIcon.src = EditImage;
+	editIcon.classList.add('edit-icon');
+
+	editDiv.append(editIcon, buildToolTip(editIcon, 'Edit project name'));
+
+	editIcon.addEventListener('click', e => {
+		let oldName = editName(nameLabel);
+		let newName = confirmEditName(nameLabel);
+		PubSub.publish('editProjectName', { oldName, newName });
+	});
+
+	return editDiv;
+}
+
+function buildProjectDeleteIcon(projectName) {
+	const delDiv = document.createElement('div');
+	delDiv.classList.add('del-icon-div', 'absolute-position');
+
+	const deleteIcon = new Image();
+	deleteIcon.src = DeleteImage;
+	deleteIcon.classList.add('delete-icon');
+
+	delDiv.append(deleteIcon, buildToolTip(deleteIcon, 'Delete project'));
+
+	deleteIcon.addEventListener('click', e => {
+		showOrCloseDeleteProjectConirmation('Show');
+		addProjDelYesNoListeners(projectName);
+	});
+
+	return delDiv;
 }
 
 function isProjectNotInDatabase(projectName) {
@@ -204,20 +287,46 @@ function isProjectNotInDatabase(projectName) {
 	return true;
 }
 
-function editProjectName(nameLabel) {
+function buildToolTip(hoveredElement, toolTipText) {
+	const toolTipElement = document.createElement('p');
+	toolTipElement.textContent = toolTipText;
+	toolTipElement.setAttribute('style', `width: ${toolTipText.length - 2}ch;`);
+	toolTipElement.classList.add('tooltip', 'absolute-position', 'hidden');
+
+	let refToSetTimeout;
+
+	hoveredElement.addEventListener('mouseenter', e => {
+		refToSetTimeout = setTimeout(makeToolTipVisible, 500);
+	});
+
+	hoveredElement.addEventListener('mouseleave', e => {
+		toolTipElement.classList.add('hidden');
+		clearTimeout(refToSetTimeout);
+	});
+
+	function makeToolTipVisible() {
+		toolTipElement.classList.remove('hidden');
+	}
+
+	return toolTipElement;
+}
+
+function editName(nameLabel) {
 	let oldName = nameLabel.textContent;
 	nameLabel.contentEditable = true;
 	window.getSelection().selectAllChildren(nameLabel);
 	return oldName;
 }
 
-function confirmEditProjectName(nameLabel, oldName) {
+function confirmEditName(nameLabel) {
 	nameLabel.addEventListener('keydown', e => {
-		if (e.key === 'Enter') {
+		if (e.key === 'Enter' || e.key === 'Escape') {
+			e.stopPropagation();
 			e.preventDefault();
 			nameLabel.contentEditable = false;
+			window.getSelection().removeAllRanges();
 			let newName = nameLabel.textContent;
-			PubSub.publish('editProjectName', { oldName, newName });
+			return newName;
 		}
 	});
 }
@@ -279,30 +388,56 @@ function showTodoForm(projectName, isItNewOrEditTodo) {
 }
 
 function setTodoFormListeners(projectName, isItNewOrEditTodo) {
+	const onClickChecklistBtn = function (e) {
+		// load the checklist into memory (if it has any items)
+		loadChecklistItemsIntoMemory();
+
+		// load the checklist popup with all the items (if any)
+		loadChecklistItemsIntoPopup();
+
+		showChecklistPopup();
+
+		addBaseChecklistPopupListeners();
+	};
+
 	const saveTodoAndCloseForm = function (e) {
 		// if form validation checks fail, return and keep the form from saving and closing
 		if (runTodoFormValidationChecks(projectName, isItNewOrEditTodo) === false) return;
+
+		// get the checklist from memory and associate it with the current todo in the UI
+		// so that the next time edit todo button is clicked, this can be loaded into memory
+		todoPopupFormElements.setChecklistValue(readChecklistFromMemory());
+
 		let { todoList, todo } = saveTodoToUI(projectName, isItNewOrEditTodo);
+
 		scrollNewTodoIntoView(todoList, todo);
+
 		saveTodoToDatabase(projectName, isItNewOrEditTodo);
-		closeFormUpAndRemoveListeners();
+
+		closeTodoFormPopupAndRemoveListeners();
+
+		// clear the checklist popup and the checklist in memory
+		clearChecklistPopup();
+		clearChecklistInMemory();
+	};
+
+	const onCloseTodoPopupForm = function (e) {
+		closeTodoFormPopupAndRemoveListeners();
 	};
 
 	const onEscapeTodoPopupForm = function (e) {
 		if (e.key === 'Escape') {
-			closeFormUpAndRemoveListeners();
+			closeTodoFormPopupAndRemoveListeners();
 		}
 	};
 
-	const onCloseTodoPopupForm = function (e) {
-		closeFormUpAndRemoveListeners();
-	};
-
+	todoPopupFormElements.checklistBtn.addEventListener('click', onClickChecklistBtn);
 	todoPopupFormElements.saveBtn.addEventListener('click', saveTodoAndCloseForm);
 	todoPopupFormElements.closeBtn.addEventListener('click', onCloseTodoPopupForm);
 	todoPopupFormElements.todoPopupForm.addEventListener('keydown', onEscapeTodoPopupForm);
 
 	// save references to functions so listeners can be removed later
+	eventListenerReferences.onClickChecklistBtn = onClickChecklistBtn;
 	eventListenerReferences.saveTodoAndCloseForm = saveTodoAndCloseForm;
 	eventListenerReferences.onCloseTodoPopupForm = onCloseTodoPopupForm;
 	eventListenerReferences.onEscapeTodoPopupForm = onEscapeTodoPopupForm;
@@ -333,21 +468,15 @@ function saveTodoToUI(projectName, isItNewOrEditTodo) {
 		getTodoFormCheckedStatus().value
 	);
 
-	// todo's childNodes 2 and 5 are its edit and del button elements
-	setListenersForViewEditAndDelete(
-		projectName,
-		todoList,
-		todoPopupFormElements.getTodoFormInputFieldValues(),
-		todo.childNodes[2],
-		todo.childNodes[5]
-	);
+	// todo's children 2 and 5 are its edit and del button elements
+	setListenersForViewEditAndDelete(projectName, todoList, todoPopupFormElements.getTodoFormInputFieldValues(), todo.children[2], todo.children[5]);
 
 	// if new todo: add it to the list, if editing: replace the existing/old todo with the edited one
 	if (isItNewOrEditTodo === 'New') {
 		todoList.appendChild(todo);
 	} else if (isItNewOrEditTodo === 'Edit') {
 		let oldTodo;
-		for (let todo of todoList.childNodes) {
+		for (let todo of todoList.children) {
 			if (todo.dataset.name === todoPopupFormElements.todoNameField.value) oldTodo = todo;
 		}
 		todoList.replaceChild(todo, oldTodo);
@@ -365,7 +494,7 @@ function getTodoListInUIToAddTo(projectName) {
 	}
 
 	// get the todolist div which is the fourth child of projectDiv
-	return projectDiv.childNodes[3];
+	return projectDiv.children[3];
 }
 
 function buildTodoUIElement(todoNameValue, dueDateValue, priorityValue, statusValue) {
@@ -446,15 +575,16 @@ function colorPriorityAndStatus(priority, priorityValue, status, statusValue) {
 	}
 }
 
-function setListenersForViewEditAndDelete(projectName, todoList, todoFormInputFieldValues, edit, del) {
-	// save field values so that they can be loaded later when "View/Edit" button is clicked
-	let viewEditTodoName = todoFormInputFieldValues.todoName;
-	let viewEditDescription = todoFormInputFieldValues.description;
-	let viewEditDueDate = todoFormInputFieldValues.due;
-	let viewEditPriority = todoFormInputFieldValues.priority;
-	let viewEditStatus = todoFormInputFieldValues.todoStatus;
-	let viewEditNotes = todoFormInputFieldValues.notes;
-	let viewEditChecklist = todoFormInputFieldValues.checklist;
+function setListenersForViewEditAndDelete(projectName, todoList, todo, edit, del) {
+	// If called when new todo is being created, save input field values so that they can be loaded later when "View/Edit" button is clicked
+	// If called when todos are being loaded from the database, save todo property values so they can be loaded later when "View/Edit" button is clicked
+	let viewEditTodoName = todo.todoName;
+	let viewEditDescription = todo.description;
+	let viewEditDueDate = todo.due;
+	let viewEditPriority = todo.priority;
+	let viewEditStatus = todo.todoStatus;
+	let viewEditNotes = todo.notes;
+	let viewEditChecklist = todo.checklist;
 
 	// repopulate fields of todo for editing
 	edit.addEventListener('click', e => {
@@ -464,14 +594,15 @@ function setListenersForViewEditAndDelete(projectName, todoList, todoFormInputFi
 		todoPopupFormElements.priorityField.value = viewEditPriority;
 		getCorrespondingTodoFormStatus(viewEditStatus).checked = true;
 		todoPopupFormElements.notes.value = viewEditNotes;
-		// placeholder to handle checklist later //
+		todoPopupFormElements.setChecklistValue(viewEditChecklist);
+
 		showTodoForm(projectName, 'Edit');
 		setTodoFormListeners(projectName, 'Edit');
 	});
 
 	// delete todo from both the UI and from the database
 	del.addEventListener('click', e => {
-		for (let todo of todoList.childNodes) {
+		for (let todo of todoList.children) {
 			if (todo.dataset.name === viewEditTodoName) {
 				todoList.removeChild(todo);
 				PubSub.publish('deleteTodo', { projectName, todoName: viewEditTodoName });
@@ -503,16 +634,16 @@ function saveTodoToDatabase(projectName, isItNewOrEditTodo) {
 		priority: todoPopupFormElements.priorityField.value,
 		status: getTodoFormCheckedStatus().value,
 		notes: todoPopupFormElements.notes.value,
-		checklist: [],
+		checklist: todoPopupFormElements.getTodoFormInputFieldValues().checklist,
 	});
 }
 
-function closeFormUpAndRemoveListeners() {
-	closeFormPopup();
+function closeTodoFormPopupAndRemoveListeners() {
+	closeTodoFormPopup();
 	removeTodoFormListeners();
 }
 
-function closeFormPopup() {
+function closeTodoFormPopup() {
 	// hide the popup form
 	todoPopupFormElements.todoPopupForm.close();
 
@@ -523,25 +654,220 @@ function closeFormPopup() {
 	todoPopupFormElements.notStartedStatus.checked = true;
 	todoPopupFormElements.priorityField.value = 'Medium';
 	todoPopupFormElements.notes.value = '';
+	todoPopupFormElements.setChecklistValue([]);
 }
 
 function removeTodoFormListeners() {
+	const onClickChecklistBtn = eventListenerReferences.onClickChecklistBtn;
 	const saveTodoAndCloseForm = eventListenerReferences.saveTodoAndCloseForm;
 	const onCloseTodoPopupForm = eventListenerReferences.onCloseTodoPopupForm;
 	const onEscapeTodoPopupForm = eventListenerReferences.onEscapeTodoPopupForm;
 
+	todoPopupFormElements.checklistBtn.removeEventListener('click', onClickChecklistBtn);
 	todoPopupFormElements.saveBtn.removeEventListener('click', saveTodoAndCloseForm);
-
 	todoPopupFormElements.closeBtn.removeEventListener('click', onCloseTodoPopupForm);
-
 	todoPopupFormElements.todoPopupForm.removeEventListener('keydown', onEscapeTodoPopupForm);
 }
 
+function showChecklistPopup() {
+	checklistElements.checklistPopup.showModal();
+}
+
+function addBaseChecklistPopupListeners() {
+	const doneChecklistAndClosePopup = function (e) {
+		hideInputFieldForNewItem();
+		clearinputFieldForNewItem();
+		closeChecklistPopupAndRemoveListeners();
+	};
+
+	const onCloseChecklistPopup = function (e) {
+		hideInputFieldForNewItem();
+		clearinputFieldForNewItem();
+		closeChecklistPopupAndRemoveListeners();
+	};
+
+	const onEscapeChecklistPopup = function (e) {
+		if (e.key === 'Escape') {
+			e.preventDefault();
+			hideInputFieldForNewItem();
+			clearinputFieldForNewItem();
+			closeChecklistPopupAndRemoveListeners();
+		}
+	};
+
+	const saveNewChecklistItem = function (e) {
+		saveNewChecklistItemToUI(checklistElements.checklistItemsDiv.children.length - 1, checklistElements.inputFieldForNewItem.value, false);
+		saveNewChecklistItemToMemory(checklistElements.inputFieldForNewItem.value, false);
+		hideInputFieldForNewItem();
+		clearinputFieldForNewItem();
+	};
+
+	checklistElements.addNewItemBtn.addEventListener('click', showInputFieldForNewChecklistItem);
+	checklistElements.doneChecklistBtn.addEventListener('click', doneChecklistAndClosePopup);
+	checklistElements.closeBtn.addEventListener('click', onCloseChecklistPopup);
+	checklistElements.checklistPopup.addEventListener('keydown', onEscapeChecklistPopup);
+	checklistElements.saveNewChecklistItemBtn.addEventListener('click', saveNewChecklistItem);
+
+	// save references to functions so listeners can be removed later
+	eventListenerReferences.doneChecklistAndClosePopup = doneChecklistAndClosePopup;
+	eventListenerReferences.onCloseChecklistPopup = onCloseChecklistPopup;
+	eventListenerReferences.onEscapeChecklistPopup = onEscapeChecklistPopup;
+	eventListenerReferences.saveNewChecklistItem = saveNewChecklistItem;
+}
+
+function showInputFieldForNewChecklistItem() {
+	checklistElements.inputFieldDivForNewItem.classList.remove('display-none');
+	checklistElements.inputFieldForNewItem.focus();
+}
+
+function closeChecklistPopupAndRemoveListeners() {
+	closeChecklistPopup();
+	removeChecklistPopupListeners();
+}
+
+function closeChecklistPopup() {
+	checklistElements.checklistPopup.close();
+}
+
+function removeChecklistPopupListeners() {
+	const doneChecklistAndClosePopup = eventListenerReferences.doneChecklistAndClosePopup;
+	const onCloseChecklistPopup = eventListenerReferences.onCloseChecklistPopup;
+	const onEscapeChecklistPopup = eventListenerReferences.onEscapeChecklistPopup;
+	const saveNewChecklistItem = eventListenerReferences.saveNewChecklistItem;
+
+	checklistElements.addNewItemBtn.removeEventListener('click', showInputFieldForNewChecklistItem);
+	checklistElements.doneChecklistBtn.removeEventListener('click', doneChecklistAndClosePopup);
+	checklistElements.closeBtn.removeEventListener('click', onCloseChecklistPopup);
+	checklistElements.checklistPopup.removeEventListener('keydown', onEscapeChecklistPopup);
+	checklistElements.saveNewChecklistItemBtn.removeEventListener('click', saveNewChecklistItem);
+}
+
+function saveNewChecklistItemToUI(index, itemName, itemStatus) {
+	const checklistItemDiv = document.createElement('div');
+	checklistItemDiv.classList.add('checklist-item-div');
+	checklistItemDiv.dataset.index = index;
+
+	const checklistItemNameLabel = document.createElement('p');
+	checklistItemNameLabel.textContent = itemName;
+	checklistItemNameLabel.setAttribute('spellcheck', 'false');
+
+	const checklistStatusToggleSwitch = buildChecklistStatusToggleSwitch(index, itemStatus);
+	const checklistItemEditIcon = buildChecklistItemEditIcon(checklistItemNameLabel, index);
+	const checklistItemDelIcon = buildChecklistItemDelIcon(index);
+
+	checklistItemDiv.append(checklistItemNameLabel, checklistStatusToggleSwitch, checklistItemEditIcon, checklistItemDelIcon);
+
+	checklistElements.checklistItemsDiv.lastElementChild.insertAdjacentElement('beforebegin', checklistItemDiv);
+}
+
+function loadChecklistItemsIntoPopup() {
+	if (todoPopupFormElements.getTodoFormInputFieldValues().checklist.length > 0) {
+		todoPopupFormElements.getTodoFormInputFieldValues().checklist.forEach(item => {
+			saveNewChecklistItemToUI(indexOf(item) + 1, item.itemName, item.itemStatus);
+		});
+	}
+}
+
+function loadChecklistItemsIntoMemory() {
+	if (todoPopupFormElements.getTodoFormInputFieldValues().checklist.length > 0) {
+		PubSub.publish('reloadChecklist', todoPopupFormElements.getTodoFormInputFieldValues().checklist);
+	}
+}
+
+function hideInputFieldForNewItem() {
+	checklistElements.inputFieldDivForNewItem.classList.add('display-none');
+}
+
+function clearinputFieldForNewItem() {
+	checklistElements.inputFieldForNewItem.value = '';
+}
+
+function buildChecklistStatusToggleSwitch(index, itemStatus) {
+	const checklistItemStatusContainer = document.createElement('label');
+	checklistItemStatusContainer.classList.add('switch');
+
+	const checklistItemStatusCheckbox = document.createElement('input');
+	checklistItemStatusCheckbox.setAttribute('id', 'checklist-item-status-checkbox');
+	checklistItemStatusCheckbox.setAttribute('type', 'checkbox');
+
+	if (itemStatus === false) checklistItemStatusCheckbox.checked = false;
+	else if (itemStatus === true) checklistItemStatusCheckbox.checked = true;
+
+	const checklistItemStatusSlider = document.createElement('span');
+	checklistItemStatusSlider.classList.add('slider', 'round');
+
+	checklistItemStatusCheckbox.addEventListener('change', e => {
+		changeChecklistItemStatusInMemory(index, checklistItemStatusCheckbox.checked);
+	});
+
+	checklistItemStatusContainer.append(checklistItemStatusCheckbox, checklistItemStatusSlider);
+
+	return checklistItemStatusContainer;
+}
+
+function buildChecklistItemEditIcon(nameLabel, index) {
+	const checklistItemEditIcon = new Image();
+	checklistItemEditIcon.src = EditImage;
+	checklistItemEditIcon.classList.add('edit-icon');
+
+	checklistItemEditIcon.addEventListener('click', e => {
+		let oldName = editName(nameLabel);
+		let newName = confirmEditName(nameLabel);
+		editChecklistItemInMemory(index, oldName, newName);
+	});
+
+	return checklistItemEditIcon;
+}
+
+function buildChecklistItemDelIcon(index) {
+	const checklistItemDelIcon = new Image();
+	checklistItemDelIcon.src = DeleteImage;
+	checklistItemDelIcon.classList.add('delete-icon');
+
+	checklistItemDelIcon.addEventListener('click', e => {
+		removeChecklistItemFromUI(index);
+		removeChecklistItemFromMemory(index);
+	});
+
+	return checklistItemDelIcon;
+}
+
+function saveNewChecklistItemToMemory(itemName, itemStatus) {
+	PubSub.publish('addToChecklist', { itemName, itemStatus });
+}
+
+function editChecklistItemInMemory(index, oldName, newName) {
+	PubSub.publish('editChecklistItem', { index, oldName, newName });
+}
+
+function changeChecklistItemStatusInMemory(index, newStatus) {
+	PubSub.publish('changeItemStatus', { index, newStatus });
+}
+
+function removeChecklistItemFromUI(index) {
+	checklistElements.checklistItemsDiv.removeChild(checklistElements.checklistItemsDiv.children[index]);
+}
+
+function removeChecklistItemFromMemory(index) {
+	PubSub.publish('removeChecklistItem', index);
+}
+
+function clearChecklistPopup() {
+	for (let checklistItemDiv of checklistElements.checklistItemsDiv.children) {
+		if (checklistElements.checklistItemsDiv.children.length > 1) {
+			checklistElements.checklistItemsDiv.removeChild(checklistItemDiv);
+		}
+	}
+}
+
+function clearChecklistInMemory() {
+	PubSub.publish('clearChecklist', null);
+}
+
 function removeProjectFromUI(projectName) {
-	const main = document.querySelector('main');
 	for (let projectDiv of getProjectDivs()) {
 		if (projectDiv.dataset.project === projectName) {
-			main.removeChild(projectDiv);
+			baseElements.mainDiv.removeChild(projectDiv);
 			return;
 		}
 	}
@@ -563,5 +889,25 @@ function moveLatestUpdatedProjectToTop(_, todo) {
 		}
 	}
 
-	addNewProjectDiv.insertAdjacentElement('afterend', divToMoveUp);
+	baseElements.addNewProjectDiv.insertAdjacentElement('afterend', divToMoveUp);
+
+	PubSub.publish('projectPositionChange', null);
+}
+
+// this gets called whenever the project divs change positions so that those on the rightmost edge
+// can have their tooltips positioned in a way that they don't overflow to the right of the viewport
+function reassignToolTipPositions(_, __) {
+	for (let projectDiv of getProjectDivs()) {
+		if (projectDiv.offsetLeft > 1000) {
+			for (let tooltip of Array.from(projectDiv.querySelectorAll('.tooltip'))) {
+				tooltip.classList.remove('tooltip-regular');
+				tooltip.classList.add('tooltip-rightmost');
+			}
+		} else if (projectDiv.offsetLeft <= 1000) {
+			for (let tooltip of Array.from(projectDiv.querySelectorAll('.tooltip'))) {
+				tooltip.classList.remove('tooltip-rightmost');
+				tooltip.classList.add('tooltip-regular');
+			}
+		}
+	}
 }
