@@ -7,8 +7,6 @@ import { addToChecklist } from './checklist.js';
 import { editChecklistItem } from './checklist.js';
 import { changeItemStatus } from './checklist.js';
 import { removeChecklistItem } from './checklist.js';
-import { readChecklistFromMemory } from './checklist.js';
-import { returnFinalChecklist } from './checklist.js';
 import { clearChecklist } from './checklist.js';
 import { reloadChecklistIntoMemory } from './checklist.js';
 import PubSub from 'pubsub-js';
@@ -44,10 +42,11 @@ function deleteTodoWrapper(_, todo) {
 	deleteTodo(todo.projectName, todo.todoName);
 }
 
-function editProjectNameWrapper(_, projectNames) {
-	let project = getProject(projectNames.oldName);
-	deleteProject(projectNames.oldName);
-	updateProject(projectNames.newName, project);
+function editProjectNameWrapper(_, projectName) {
+	// the identifier is the oldName (the name to be edited)
+	let project = getProject(projectName.identifier);
+	deleteProject(projectName.identifier);
+	updateProject(projectName.newName, project);
 }
 
 function deleteProjectWrapper(_, projectName) {
@@ -59,15 +58,16 @@ function addToChecklistWrapper(_, checklistItem) {
 }
 
 function editChecklistItemWrapper(_, changeData) {
-	editChecklistItem(changeData.index, changeData.oldName, changeData.newName);
+	// the identifier is the uniqueId of the checklist item
+	editChecklistItem(changeData.identifier, changeData.newName);
 }
 
 function changeItemStatusWrapper(_, changeData) {
-	changeItemStatus(changeData.index, changeData.newStatus);
+	changeItemStatus(changeData.uniqueId, changeData.newStatus);
 }
 
-function removeChecklistItemWrapper(_, index) {
-	removeChecklistItem(index);
+function removeChecklistItemWrapper(_, uniqueId) {
+	removeChecklistItem(uniqueId);
 }
 
 function reloadChecklistWrapper(_, checklist) {

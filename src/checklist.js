@@ -1,29 +1,25 @@
 let checklist = [];
 
-export function addToChecklist(itemName, itemStatus) {
-	let item = { itemName, itemStatus };
+export function addToChecklist(uniqueId, itemName, itemStatus) {
+	let item = { uniqueId, itemName, itemStatus };
 	// add item with status to checklist
 	checklist.push(item);
 	// return an object with: item, its index, and the whole checklist
-	return { item, index: checklist.length - 1, checklist };
+	return { item, checklist };
 }
 
-export function editChecklistItem(index, uneditedItem, editedItem) {
-	checklist[index].itemName = editedItem;
-
-	// return an object with: item, its index, and the whole checklist
-	return { editedItem, index, checklist };
+export function editChecklistItem(uniqueId, newName) {
+	getItemFromUniqueId(uniqueId).itemName = newName;
+	return { newName, checklist };
 }
 
-export function changeItemStatus(index, newStatus) {
-	checklist[index].itemStatus = newStatus;
-
-	// return an object with: item, its status, its index, and the whole checklist
-	return { newStatus, index, checklist };
+export function changeItemStatus(uniqueId, newStatus) {
+	getItemFromUniqueId(uniqueId).itemStatus = newStatus;
+	return { newStatus, checklist };
 }
 
-export function removeChecklistItem(index) {
-	checklist.splice(index, 1);
+export function removeChecklistItem(uniqueId) {
+	checklist.splice(checklist.indexOf(getItemFromUniqueId(uniqueId)), 1);
 	return checklist;
 }
 
@@ -37,4 +33,10 @@ export function clearChecklist() {
 
 export function reloadChecklistIntoMemory(checklistFromDatabase) {
 	checklist = checklistFromDatabase;
+}
+
+function getItemFromUniqueId(uniqueId) {
+	for (let item of checklist) {
+		if (item.uniqueId === uniqueId) return item;
+	}
 }
