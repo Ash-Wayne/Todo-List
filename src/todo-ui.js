@@ -5,7 +5,8 @@ import { format } from 'date-fns';
 
 import { readTodo } from './todo.js';
 import { readChecklistFromMemory } from './checklist.js';
-import { eventListenerReferences, getProjectDiv } from './index.js';
+import { eventListenerReferences } from './index.js';
+import { getProjectDiv } from './main-ui.js';
 import {
 	clearChecklistPopup,
 	clearChecklistInMemory,
