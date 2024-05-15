@@ -819,8 +819,8 @@ function buildChecklistItemDelIcon(uniqueId) {
 	return checklistItemDelIcon;
 }
 
-function saveNewChecklistItemToMemory(itemName, itemStatus) {
-	PubSub.publish('addToChecklist', { itemName, itemStatus });
+function saveNewChecklistItemToMemory(uniqueId, itemName, itemStatus) {
+	PubSub.publish('addToChecklist', { uniqueId, itemName, itemStatus });
 }
 
 function changeChecklistItemStatusInMemory(uniqueId, newStatus) {

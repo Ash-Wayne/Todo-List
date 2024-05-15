@@ -54,7 +54,7 @@ function deleteProjectWrapper(_, projectName) {
 }
 
 function addToChecklistWrapper(_, checklistItem) {
-	addToChecklist(checklistItem.itemName, checklistItem.itemStatus);
+	addToChecklist(checklistItem.uniqueId, checklistItem.itemName, checklistItem.itemStatus);
 }
 
 function editChecklistItemWrapper(_, changeData) {
