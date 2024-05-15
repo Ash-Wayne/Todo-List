@@ -1,8 +1,7 @@
-import './reset.css';
-import './styles.css';
-import './toggle-switch.css';
-import EditImage from './edit.png';
-import DeleteImage from './delete.png';
+import './css/reset.css';
+import './css/styles.css';
+import EditImage from './img/edit.png';
+import DeleteImage from './img/delete.png';
 import PubSub from 'pubsub-js';
 
 import { setupCustomPubSubListeners } from './fn-wrappers.js';

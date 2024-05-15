@@ -1,9 +1,9 @@
-import './reset.css';
-import './styles.css';
-import './toggle-switch.css';
+import './css/reset.css';
+import './css/styles.css';
+import './css/toggle-switch.css';
 import PubSub from 'pubsub-js';
-import EditImage from './edit.png';
-import DeleteImage from './delete.png';
+import EditImage from './img/edit.png';
+import DeleteImage from './img/delete.png';
 
 import { editName, confirmEditName } from './utilities.js';
 import { eventListenerReferences } from './index.js';
