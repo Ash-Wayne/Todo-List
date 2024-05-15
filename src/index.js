@@ -111,26 +111,16 @@ const projectDelConfirmDialogElem = (function () {
 // these are used to capture event listener variables in one area so they can be removed in another area later
 const eventListenerReferences = (function () {
 	let onClickChecklistBtn;
-	let saveTodoAndCloseForm;
-	let onCloseTodoPopupForm;
-	let onEscapeTodoPopupForm;
+	let saveOrEscOrCloseTodoForm;
 	let showInputFieldForNewChecklistItem;
-	let saveChecklistAndClosePopup;
-	let onCloseChecklistPopup;
-	let onEscapeChecklistPopup;
-	let doneChecklistAndClosePopup;
+	let closeChecklistPopup;
 	let saveNewChecklistItem;
 
 	return {
 		onClickChecklistBtn,
-		saveTodoAndCloseForm,
-		onCloseTodoPopupForm,
-		onEscapeTodoPopupForm,
+		saveOrEscOrCloseTodoForm,
 		showInputFieldForNewChecklistItem,
-		saveChecklistAndClosePopup,
-		onCloseChecklistPopup,
-		onEscapeChecklistPopup,
-		doneChecklistAndClosePopup,
+		closeChecklistPopup,
 		saveNewChecklistItem,
 	};
 })();
@@ -417,55 +407,39 @@ function setTodoFormListeners(projectName, isItNewOrEditTodo) {
 		addBaseChecklistPopupListeners();
 	};
 
-	const saveTodoAndCloseForm = function (e) {
-		// if form validation checks fail, return and keep the form from saving and closing
-		if (runTodoFormValidationChecks(projectName, isItNewOrEditTodo) === false) return;
+	const saveOrEscOrCloseTodoForm = function (e) {
+		if (e.type === 'keydown' && e.key !== 'Escape') return;
 
-		// get the checklist from memory and associate it with the current todo in the UI
-		// so that the next time edit todo button is clicked, this can be loaded into memory
-		todoPopupFormElements.setChecklistValue(readChecklistFromMemory());
+		if (e.target.id === 'todo-save-btn') {
+			// if form validation checks fail, return and keep the form from saving and closing
+			if (runTodoFormValidationChecks(projectName, isItNewOrEditTodo) === false) return;
 
-		let { todoList, todo } = saveTodoToUI(projectName, isItNewOrEditTodo);
+			// get the checklist from memory and associate it with the current todo in the UI
+			// so that the next time edit todo button is clicked, this can be loaded into memory
+			todoPopupFormElements.setChecklistValue(readChecklistFromMemory());
 
-		scrollNewTodoIntoView(todoList, todo);
+			let { todoList, todo } = saveTodoToUI(projectName, isItNewOrEditTodo);
 
-		saveTodoToDatabase(projectName, isItNewOrEditTodo);
+			scrollNewTodoIntoView(todoList, todo);
 
-		closeTodoFormPopupAndRemoveListeners();
-
-		// clear the checklist popup and the checklist in memory
-		clearChecklistPopup();
-		clearChecklistInMemory();
-	};
-
-	const onCloseTodoPopupForm = function (e) {
-		closeTodoFormPopupAndRemoveListeners();
-
-		// clear the checklist popup and the checklist in memory
-		clearChecklistPopup();
-		clearChecklistInMemory();
-	};
-
-	const onEscapeTodoPopupForm = function (e) {
-		if (e.key === 'Escape') {
-			closeTodoFormPopupAndRemoveListeners();
-
-			// clear the checklist popup and the checklist in memory
-			clearChecklistPopup();
-			clearChecklistInMemory();
+			saveTodoToDatabase(projectName, isItNewOrEditTodo);
 		}
+
+		closeTodoFormPopupAndRemoveListeners();
+
+		// clear the checklist popup and the checklist in memory
+		clearChecklistPopup();
+		clearChecklistInMemory();
 	};
 
 	todoPopupFormElements.checklistBtn.addEventListener('click', onClickChecklistBtn);
-	todoPopupFormElements.saveBtn.addEventListener('click', saveTodoAndCloseForm);
-	todoPopupFormElements.closeBtn.addEventListener('click', onCloseTodoPopupForm);
-	todoPopupFormElements.todoPopupForm.addEventListener('keydown', onEscapeTodoPopupForm);
+	todoPopupFormElements.saveBtn.addEventListener('click', saveOrEscOrCloseTodoForm);
+	todoPopupFormElements.closeBtn.addEventListener('click', saveOrEscOrCloseTodoForm);
+	todoPopupFormElements.todoPopupForm.addEventListener('keydown', saveOrEscOrCloseTodoForm);
 
 	// save references to functions so listeners can be removed later
 	eventListenerReferences.onClickChecklistBtn = onClickChecklistBtn;
-	eventListenerReferences.saveTodoAndCloseForm = saveTodoAndCloseForm;
-	eventListenerReferences.onCloseTodoPopupForm = onCloseTodoPopupForm;
-	eventListenerReferences.onEscapeTodoPopupForm = onEscapeTodoPopupForm;
+	eventListenerReferences.saveOrEscOrCloseTodoForm = saveOrEscOrCloseTodoForm;
 }
 
 function runTodoFormValidationChecks(projectName, isItNewOrEditTodo) {
@@ -612,7 +586,7 @@ function setListenersForViewEditAndDelete(projectName, todoList, todo, edit, del
 		todoPopupFormElements.priorityField.value = viewEditPriority;
 		getCorrespondingTodoFormStatus(viewEditStatus).checked = true;
 		todoPopupFormElements.notes.value = viewEditNotes;
-		todoPopupFormElements.setChecklistValue(viewEditChecklist);
+		todoPopupFormElements.setChecklistValue(JSON.parse(JSON.stringify(viewEditChecklist)));
 
 		showTodoForm(projectName, 'Edit');
 		setTodoFormListeners(projectName, 'Edit');
@@ -677,14 +651,12 @@ function closeTodoFormPopup() {
 
 function removeTodoFormListeners() {
 	const onClickChecklistBtn = eventListenerReferences.onClickChecklistBtn;
-	const saveTodoAndCloseForm = eventListenerReferences.saveTodoAndCloseForm;
-	const onCloseTodoPopupForm = eventListenerReferences.onCloseTodoPopupForm;
-	const onEscapeTodoPopupForm = eventListenerReferences.onEscapeTodoPopupForm;
+	const saveOrEscOrCloseTodoForm = eventListenerReferences.saveOrEscOrCloseTodoForm;
 
 	todoPopupFormElements.checklistBtn.removeEventListener('click', onClickChecklistBtn);
-	todoPopupFormElements.saveBtn.removeEventListener('click', saveTodoAndCloseForm);
-	todoPopupFormElements.closeBtn.removeEventListener('click', onCloseTodoPopupForm);
-	todoPopupFormElements.todoPopupForm.removeEventListener('keydown', onEscapeTodoPopupForm);
+	todoPopupFormElements.saveBtn.removeEventListener('click', saveOrEscOrCloseTodoForm);
+	todoPopupFormElements.closeBtn.removeEventListener('click', saveOrEscOrCloseTodoForm);
+	todoPopupFormElements.todoPopupForm.removeEventListener('keydown', saveOrEscOrCloseTodoForm);
 }
 
 function showChecklistPopup() {
@@ -692,28 +664,19 @@ function showChecklistPopup() {
 }
 
 function addBaseChecklistPopupListeners() {
-	const doneChecklistAndClosePopup = function (e) {
+	const closeChecklistPopup = function (e) {
+		if (e.type === 'keydown' && e.key !== 'Escape') return;
+		if (e.type === 'keydown' && e.key === 'Escape') e.preventDefault();
+
 		hideInputFieldForNewItem();
 		clearinputFieldForNewItem();
 		closeChecklistPopupAndRemoveListeners();
-	};
-
-	const onCloseChecklistPopup = function (e) {
-		hideInputFieldForNewItem();
-		clearinputFieldForNewItem();
-		closeChecklistPopupAndRemoveListeners();
-	};
-
-	const onEscapeChecklistPopup = function (e) {
-		if (e.key === 'Escape') {
-			e.preventDefault();
-			hideInputFieldForNewItem();
-			clearinputFieldForNewItem();
-			closeChecklistPopupAndRemoveListeners();
-		}
 	};
 
 	const saveNewChecklistItem = function (e) {
+		if (e.type === 'keydown' && e.key !== 'Enter') return;
+		if (e.type === 'keydown' && e.key === 'Enter') e.preventDefault();
+
 		let uniqueId = Math.random();
 		saveNewChecklistItemToUI(uniqueId, checklistElements.inputFieldForNewItem.value, false);
 		saveNewChecklistItemToMemory(uniqueId, checklistElements.inputFieldForNewItem.value, false);
@@ -722,15 +685,14 @@ function addBaseChecklistPopupListeners() {
 	};
 
 	checklistElements.addNewItemBtn.addEventListener('click', showInputFieldForNewChecklistItem);
-	checklistElements.doneChecklistBtn.addEventListener('click', doneChecklistAndClosePopup);
-	checklistElements.closeBtn.addEventListener('click', onCloseChecklistPopup);
-	checklistElements.checklistPopup.addEventListener('keydown', onEscapeChecklistPopup);
+	checklistElements.doneChecklistBtn.addEventListener('click', closeChecklistPopup);
+	checklistElements.closeBtn.addEventListener('click', closeChecklistPopup);
+	checklistElements.checklistPopup.addEventListener('keydown', closeChecklistPopup);
 	checklistElements.saveNewChecklistItemBtn.addEventListener('click', saveNewChecklistItem);
+	checklistElements.inputFieldForNewItem.addEventListener('keydown', saveNewChecklistItem);
 
 	// save references to functions so listeners can be removed later
-	eventListenerReferences.doneChecklistAndClosePopup = doneChecklistAndClosePopup;
-	eventListenerReferences.onCloseChecklistPopup = onCloseChecklistPopup;
-	eventListenerReferences.onEscapeChecklistPopup = onEscapeChecklistPopup;
+	eventListenerReferences.closeChecklistPopup = closeChecklistPopup;
 	eventListenerReferences.saveNewChecklistItem = saveNewChecklistItem;
 }
 
@@ -749,16 +711,15 @@ function closeChecklistPopup() {
 }
 
 function removeChecklistPopupListeners() {
-	const doneChecklistAndClosePopup = eventListenerReferences.doneChecklistAndClosePopup;
-	const onCloseChecklistPopup = eventListenerReferences.onCloseChecklistPopup;
-	const onEscapeChecklistPopup = eventListenerReferences.onEscapeChecklistPopup;
+	const closeChecklistPopup = eventListenerReferences.closeChecklistPopup;
 	const saveNewChecklistItem = eventListenerReferences.saveNewChecklistItem;
 
 	checklistElements.addNewItemBtn.removeEventListener('click', showInputFieldForNewChecklistItem);
-	checklistElements.doneChecklistBtn.removeEventListener('click', doneChecklistAndClosePopup);
-	checklistElements.closeBtn.removeEventListener('click', onCloseChecklistPopup);
-	checklistElements.checklistPopup.removeEventListener('keydown', onEscapeChecklistPopup);
+	checklistElements.doneChecklistBtn.removeEventListener('click', closeChecklistPopup);
+	checklistElements.closeBtn.removeEventListener('click', closeChecklistPopup);
+	checklistElements.checklistPopup.removeEventListener('keydown', closeChecklistPopup);
 	checklistElements.saveNewChecklistItemBtn.removeEventListener('click', saveNewChecklistItem);
+	checklistElements.inputFieldForNewItem.removeEventListener('keydown', saveNewChecklistItem);
 }
 
 function saveNewChecklistItemToUI(uniqueId, itemName, itemStatus) {
@@ -779,6 +740,12 @@ function saveNewChecklistItemToUI(uniqueId, itemName, itemStatus) {
 	checklistElements.checklistItemsDiv.lastElementChild.insertAdjacentElement('beforebegin', checklistItemDiv);
 }
 
+function loadChecklistItemsIntoMemory() {
+	if (todoPopupFormElements.getTodoFormInputFieldValues().checklist.length > 0) {
+		PubSub.publish('reloadChecklist', todoPopupFormElements.getTodoFormInputFieldValues().checklist);
+	}
+}
+
 function loadChecklistItemsIntoPopup() {
 	let checklist = todoPopupFormElements.getTodoFormInputFieldValues().checklist;
 	if (checklist.length > 0) {
@@ -792,12 +759,6 @@ function loadChecklistItemsIntoPopup() {
 		checklist.forEach(item => {
 			saveNewChecklistItemToUI(item.uniqueId, item.itemName, item.itemStatus);
 		});
-	}
-}
-
-function loadChecklistItemsIntoMemory() {
-	if (todoPopupFormElements.getTodoFormInputFieldValues().checklist.length > 0) {
-		PubSub.publish('reloadChecklist', todoPopupFormElements.getTodoFormInputFieldValues().checklist);
 	}
 }
 
