@@ -1,6 +1,5 @@
 import { format } from 'date-fns';
-import { getProject } from './projects';
-import { updateProject } from './projects';
+import { getProject, updateProject } from './projects';
 
 export function createTodo(projectName, todoName, description = '', dueDate = '', priority = '', todoStatus = '', notes = '', checklist) {
 	let due;

@@ -1,11 +1,13 @@
 import './reset.css';
 import './styles.css';
 import './toggle-switch.css';
+import PubSub from 'pubsub-js';
 import EditImage from './edit.png';
 import DeleteImage from './delete.png';
 
-import { todoPopupFormElements } from './todo-ui.js';
+import { editName, confirmEditName } from './utilities.js';
 import { eventListenerReferences } from './index.js';
+import { todoPopupFormElements } from './todo-ui.js';
 
 const checklistElements = (function () {
 	const checklistPopup = document.querySelector('dialog:has(.checklist)');
@@ -109,6 +111,7 @@ function saveNewChecklistItemToUI(uniqueId, itemName, itemStatus) {
 	const checklistItemDiv = document.createElement('div');
 	checklistItemDiv.classList.add('checklist-item-div');
 	checklistItemDiv.dataset.uniqueId = uniqueId;
+	checklistItemDiv.dataset.itemName = itemName;
 
 	const checklistItemNameLabel = document.createElement('p');
 	checklistItemNameLabel.textContent = itemName;
@@ -123,8 +126,74 @@ function saveNewChecklistItemToUI(uniqueId, itemName, itemStatus) {
 	checklistElements.checklistItemsDiv.lastElementChild.insertAdjacentElement('beforebegin', checklistItemDiv);
 }
 
-function saveNewChecklistItemToMemory(itemName, itemStatus) {
-	PubSub.publish('addToChecklist', { itemName, itemStatus });
+function saveNewChecklistItemToMemory(uniqueId, itemName, itemStatus) {
+	PubSub.publish('addToChecklist', { uniqueId, itemName, itemStatus });
+}
+
+function buildChecklistStatusToggleSwitch(uniqueId, itemStatus) {
+	const checklistItemStatusContainer = document.createElement('label');
+	checklistItemStatusContainer.classList.add('switch');
+
+	const checklistItemStatusCheckbox = document.createElement('input');
+	checklistItemStatusCheckbox.setAttribute('id', Math.random().toString());
+	checklistItemStatusCheckbox.setAttribute('type', 'checkbox');
+
+	if (itemStatus === false) checklistItemStatusCheckbox.checked = false;
+	else if (itemStatus === true) checklistItemStatusCheckbox.checked = true;
+
+	const checklistItemStatusSlider = document.createElement('span');
+	checklistItemStatusSlider.classList.add('slider', 'round');
+
+	checklistItemStatusCheckbox.addEventListener('change', e => {
+		changeChecklistItemStatusInMemory(uniqueId, checklistItemStatusCheckbox.checked);
+	});
+
+	checklistItemStatusContainer.append(checklistItemStatusCheckbox, checklistItemStatusSlider);
+
+	return checklistItemStatusContainer;
+}
+
+function buildChecklistItemEditIcon(nameLabel) {
+	const checklistItemEditIcon = new Image();
+	checklistItemEditIcon.src = EditImage;
+	checklistItemEditIcon.classList.add('edit-icon');
+
+	checklistItemEditIcon.addEventListener('click', e => {
+		editName(nameLabel);
+		confirmEditName(nameLabel, parseFloat(nameLabel.parentNode.dataset.uniqueId), 'editChecklistItem');
+	});
+
+	return checklistItemEditIcon;
+}
+
+function buildChecklistItemDelIcon(uniqueId) {
+	const checklistItemDelIcon = new Image();
+	checklistItemDelIcon.src = DeleteImage;
+	checklistItemDelIcon.classList.add('delete-icon');
+
+	checklistItemDelIcon.addEventListener('click', e => {
+		removeChecklistItemFromUI(uniqueId);
+		removeChecklistItemFromMemory(uniqueId);
+	});
+
+	return checklistItemDelIcon;
+}
+
+function changeChecklistItemStatusInMemory(uniqueId, newStatus) {
+	PubSub.publish('changeItemStatus', { uniqueId, newStatus });
+}
+
+function removeChecklistItemFromUI(uniqueId) {
+	for (let item of checklistElements.checklistItemsDiv.children) {
+		if (item.dataset.uniqueId === uniqueId.toString()) {
+			checklistElements.checklistItemsDiv.removeChild(item);
+			break;
+		}
+	}
+}
+
+function removeChecklistItemFromMemory(uniqueId) {
+	PubSub.publish('removeChecklistItem', uniqueId);
 }
 
 function hideInputFieldForNewItem() {
@@ -138,4 +207,20 @@ function clearinputFieldForNewItem() {
 function closeChecklistPopupAndRemoveListeners() {
 	closeChecklistPopup();
 	removeChecklistPopupListeners();
+}
+
+function closeChecklistPopup() {
+	checklistElements.checklistPopup.close();
+}
+
+function removeChecklistPopupListeners() {
+	const closeChecklistPopup = eventListenerReferences.closeChecklistPopup;
+	const saveNewChecklistItem = eventListenerReferences.saveNewChecklistItem;
+
+	checklistElements.addNewItemBtn.removeEventListener('click', showInputFieldForNewChecklistItem);
+	checklistElements.doneChecklistBtn.removeEventListener('click', closeChecklistPopup);
+	checklistElements.closeBtn.removeEventListener('click', closeChecklistPopup);
+	checklistElements.checklistPopup.removeEventListener('keydown', closeChecklistPopup);
+	checklistElements.saveNewChecklistItemBtn.removeEventListener('click', saveNewChecklistItem);
+	checklistElements.inputFieldForNewItem.removeEventListener('keydown', saveNewChecklistItem);
 }

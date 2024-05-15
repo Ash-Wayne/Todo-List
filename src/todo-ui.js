@@ -1,17 +1,19 @@
 import './reset.css';
 import './styles.css';
 import PubSub from 'pubsub-js';
+import { format } from 'date-fns';
 
 import { readTodo } from './todo.js';
 import { readChecklistFromMemory } from './checklist.js';
-import { clearChecklistPopup } from './checklist-ui.js';
-import { clearChecklistInMemory } from './checklist-ui.js';
-import { loadChecklistItemsIntoMemory } from './checklist-ui.js';
-import { loadChecklistItemsIntoPopup } from './checklist-ui.js';
-import { showChecklistPopup } from './checklist-ui.js';
-import { addBaseChecklistPopupListeners } from './checklist-ui.js';
-import { setListenersForViewEditAndDelete } from './index.js';
-import { eventListenerReferences } from './index.js';
+import { eventListenerReferences, getProjectDiv } from './index.js';
+import {
+	clearChecklistPopup,
+	clearChecklistInMemory,
+	loadChecklistItemsIntoMemory,
+	loadChecklistItemsIntoPopup,
+	showChecklistPopup,
+	addBaseChecklistPopupListeners,
+} from './checklist-ui.js';
 
 export const todoPopupFormElements = (function () {
 	const todoPopupForm = document.querySelector('dialog:has(.todo-popup-form)');
