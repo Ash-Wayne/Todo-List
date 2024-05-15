@@ -1,15 +1,8 @@
-import { createNewProject, getProject, updateProject } from './projects.js';
-import { deleteProject } from './projects.js';
-import { createTodo } from './todo.js';
-import { updateTodo } from './todo.js';
-import { deleteTodo } from './todo.js';
-import { addToChecklist } from './checklist.js';
-import { editChecklistItem } from './checklist.js';
-import { changeItemStatus } from './checklist.js';
-import { removeChecklistItem } from './checklist.js';
-import { clearChecklist } from './checklist.js';
-import { reloadChecklistIntoMemory } from './checklist.js';
 import PubSub from 'pubsub-js';
+
+import { createNewProject, getProject, updateProject, deleteProject } from './projects.js';
+import { createTodo, updateTodo, deleteTodo } from './todo.js';
+import { addToChecklist, editChecklistItem, changeItemStatus, removeChecklistItem, clearChecklist, reloadChecklistIntoMemory } from './checklist.js';
 
 export function setupCustomPubSubListeners() {
 	PubSub.subscribe('addNewProject', createNewProjectWrapper);
@@ -54,7 +47,7 @@ function deleteProjectWrapper(_, projectName) {
 }
 
 function addToChecklistWrapper(_, checklistItem) {
-	addToChecklist(checklistItem.itemName, checklistItem.itemStatus);
+	addToChecklist(checklistItem.uniqueId, checklistItem.itemName, checklistItem.itemStatus);
 }
 
 function editChecklistItemWrapper(_, changeData) {
