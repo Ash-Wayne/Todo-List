@@ -88,6 +88,12 @@ export function addBaseChecklistPopupListeners() {
 		saveNewChecklistItemToMemory(uniqueId, checklistElements.inputFieldForNewItem.value, false);
 		hideInputFieldForNewItem();
 		clearinputFieldForNewItem();
+		// by the end of this listener the focus will automatically be on either the 'Save Item' btn
+		// or, if Enter was pressed instead, the input field, both of which will have disappeared by this point
+		// so if the user presses 'Escape' right after, that event won't propagate to the checklist popup
+		// and therefore the closeChecklistPopup listener won't run. This line will put the focus on the popup
+		// so that propagation from the disappearing elements isn't needed.
+		checklistElements.checklistPopup.focus();
 	};
 
 	checklistElements.addNewItemBtn.addEventListener('click', showInputFieldForNewChecklistItem);
